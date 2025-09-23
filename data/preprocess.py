@@ -20,7 +20,7 @@ def preprocess_wiki_text_generation(ds: Dataset) -> Dataset:
         (re.compile(r'@\s+@'), ' '),
     ]
     def clean_text(example):
-            text = example["text"]
+            text = example["text"].strip()
             # Heading pattern: == Heading ==, === Subheading ===, etc.
             match = heading_pattern.match(text)
             if match:
