@@ -45,7 +45,6 @@ def load_data(
 
     # Apply sampling if needed
     if num_samples is not None and streaming:
-        assert sample_start_idx <= num_samples
         # Manual iteration (streaming mode returns iterator)
         samples = []
         for i, x in enumerate(ds):
