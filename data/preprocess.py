@@ -32,7 +32,7 @@ def preprocess_wiki_text_generation(ds: Dataset) -> Dataset:
             # Text pattern
             for pattern, repl in replacements.items():
                 text = re.sub(pattern, repl, text)
-            return text.strip()
+            return {"text":text.strip()}
     ds = ds.map(clean_text, num_proc = max(1, os.cpu_count()-1))
 
     articles, curr_article = [], ""
