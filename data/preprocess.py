@@ -30,7 +30,7 @@ def preprocess_wiki_text_generation(ds: Dataset) -> Dataset:
                 return {"text": markdown_heading}
             
             # Text pattern
-            for pattern, repl in replacements.items():
+            for pattern, repl in replacements:
                 text = re.sub(pattern, repl, text)
             return {"text":text.strip()}
     ds = ds.map(clean_text, num_proc = max(1, os.cpu_count()-1))
