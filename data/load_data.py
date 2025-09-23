@@ -6,6 +6,7 @@ def load_data(
     dataset_name: str,
     split: str = "train",
     num_samples: int = None,
+    sample_start_idx: int = 0,
     streaming: bool = False,
     **kwargs
 ) -> Dataset:
@@ -44,8 +45,16 @@ def load_data(
 
     # Apply sampling if needed
     if num_samples is not None and streaming:
+        assert sample_start_idx <= num_samples
         # Manual iteration (streaming mode returns iterator)
-        ds = Dataset.from_list([x for _, x in zip(range(num_samples), ds)])
+        samples = []
+        for i, x in enumerate(ds):
+            if i < sample_start_idx:
+                continue
+            samples.append(x)
+            if len(samples) == num_samples:
+                break
+        ds = Dataset.from_list(samples)
 
     elif num_samples is not None:
         # Non-streaming: use select
