@@ -23,6 +23,7 @@ class Data:
         tokenizer=None,
         seq_len: int = 512,
         num_samples: int = None,
+        sample_start_idx: int = 0,
         streaming: bool = False,
         get_stats: bool = False,
         **kwargs
@@ -37,7 +38,8 @@ class Data:
         t0 = time.time()
 
         # Step 1: Load
-        ds = load_data(dataset_name, split=split, num_samples=num_samples, streaming=streaming, **kwargs)
+        ds = load_data(dataset_name, split=split, num_samples=num_samples, 
+                       sample_start_idx=sample_start_idx, streaming=streaming, **kwargs)
         t1 = time.time()
         self.stats["load_time"] = t1 - t0
 
@@ -64,7 +66,7 @@ class Data:
         self.total_tokens = total_tokens
         self.stats["total_tokens"] = total_tokens
         self.stats["total_chunks"] = len(tokenized_chunks)
-
+        self.stats["total_time"] = t4 - t0
         if get_stats:
             print(self.stats)
 
@@ -131,4 +133,5 @@ class Data:
         merged.stats["preprocess_time"] = self.stats["preprocess_time"] + other.stats["preprocess_time"]
         merged.stats["tokenize_time"] = self.stats["tokenize_time"] + other.stats["tokenize_time"]
         merged.stats["chunk_time"] = self.stats["chunk_time"] + other.stats["chunk_time"]
+        merged.stats["total_time"] = self.stats["total_time"] + other.stats["total_time"]
         return merged
