@@ -19,7 +19,8 @@ def preprocess_wiki_text_generation(ds: Dataset) -> Dataset:
         (re.compile(r'@\s*,\s*@'), ','),
         (re.compile(r'@\s+@'), ' '),
     ]
-    def clean_text(text):
+    def clean_text(example):
+            text = example["text"]
             # Heading pattern: == Heading ==, === Subheading ===, etc.
             match = heading_pattern.match(text)
             if match:
