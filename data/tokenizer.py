@@ -36,8 +36,8 @@ def get_tokenizer(model_type: str = "gpt2", model_name: str = None, add_special_
         tokenizer.add_special_tokens(special_tokens)
 
     # Optional: round max length to nearest multiple of 128
-    target_vocab_size = next_multiple(tokenizer.vocab_size, 128)
-    extra_tokens = target_vocab_size - tokenizer.vocab_size
+    target_vocab_size = next_multiple(len(tokenizer), 128)
+    extra_tokens = target_vocab_size - len(tokenizer)
 
     # Step 2: Add [unused] tokens to match the target size
     if extra_tokens > 0:
@@ -45,6 +45,6 @@ def get_tokenizer(model_type: str = "gpt2", model_name: str = None, add_special_
         tokenizer.add_tokens(unused_tokens)
 
     # Step 3: (Optional) Confirm updated vocab size
-    print(f"Updated vocab size: {tokenizer.vocab_size}")
+    print(f"Updated vocab size: {len(tokenizer)}")
 
     return tokenizer
