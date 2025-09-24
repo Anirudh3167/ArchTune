@@ -11,7 +11,7 @@ class Hyperparameters:
     lr: float = 5e-4
     ckpt_path: str = './ckpt.pt'
     device: str = 'cpu'
-    bias: bool = True
+    bias: bool = False
 
     out_dir: str = "./output_dir"
     epochs: int = 1 #2 #4 #3 #2 #1
@@ -23,5 +23,7 @@ class Hyperparameters:
     logging_steps=50#500
     save_steps=1_000
     loss_reduction = "mean"
+
+    logits_softcapping: bool = False
     
 config = Hyperparameters()

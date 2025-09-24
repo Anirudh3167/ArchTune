@@ -107,36 +107,24 @@ class MLP(nn.Module):
         x = F.relu(x).square()
         return self.dropout(self.c_proj(x))
 
-class LayerNorm(nn.Module):
-    """ LayerNorm but with an optional bias. PyTorch doesn't support simply bias=False """
-    def __init__(self, ndim, bias):
-        super().__init__()
-        self.weight = nn.Parameter(torch.ones(ndim))
-        self.bias = nn.Parameter(torch.zeros(ndim)) if bias else None
-
-    def forward(self, input):
-        return F.layer_norm(input, self.weight.shape, self.weight, self.bias, 1e-5)
-
 class Block(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.csa = CausalSelfAttention(config)
         self.mlp = MLP(config)
-        self.ln1, self.ln2 = [LayerNorm(config.n_embed,config.bias) for _ in range(2)]
-
+        
     def forward(self, x):
-        y = self.ln1(x)
+        y = norm(x)
         x = x + self.csa(y)
-        y = self.ln2(x)
+        y = norm(x)
         return x + self.mlp(y)
 
-class GPT(nn.Module):
+class GPTLNremoved(nn.Module):
     def __init__(self, config, tokenizer):
         super().__init__()
         self.vocab_size = config.vocab_size
         self.token_embedding_table = nn.Embedding(self.vocab_size, config.n_embed)
         self.blocks = nn.ModuleList([Block(config) for _ in range(config.n_layer)])
-        self.ln = LayerNorm(config.n_embed,config.bias)
         self.lm_head = nn.Linear(config.n_embed,self.vocab_size, bias = False)
         # self.token_embedding_table.weight = self.lm_head.weight  # https://paperswithcode.com/method/weight-tying
         # self.lm_head.weight.detach().zero_() # @Grad62304977
