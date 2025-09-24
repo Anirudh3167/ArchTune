@@ -143,7 +143,7 @@ class GPTLNremoved(nn.Module):
         B, S = input_ids.shape
         x = norm(self.token_embedding_table(input_ids))
         for module in self.blocks:   x = module(x)
-        x = self.ln(x)
+        x = norm(x)
         logits = self.lm_head(x).float()
         # @Grad62304977 added tanh softcapping following Gemma 2 paper, @KoszarskyB reduced it from 30 to 15, @YouJiacheng shifted it by +15 (2*sigmoid(2*x)=tanh(x)+1)
         if self.config.logits_softcapping:
