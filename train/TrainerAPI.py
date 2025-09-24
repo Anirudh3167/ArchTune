@@ -16,14 +16,14 @@ class CustomTrainer(Trainer):
                 # Muon: hidden matrices
                 {"params": hidden_matrix_params,
                  "use_muon": True,
-                 "lr": 0.0036,        # was 0.005 → now tuned down
+                 "lr": 0.05,        # was 0.005 → now tuned down
                  "momentum": 0.95,
                  "weight_decay": 0},
 
                 # AdamW: embeddings
                 {"params": embed_params,
                  "use_muon": False,
-                 "lr": 0.0012,        # scaled down from 0.0015
+                 "lr": 0.008,        # scaled down from 0.0015
                  "betas": (0.8, 0.95),
                  "eps": 1e-10,
                  "weight_decay": 0},
@@ -31,7 +31,7 @@ class CustomTrainer(Trainer):
                 # AdamW: scalars (bias, norm, etc.)
                 {"params": scalar_params,
                  "use_muon": False,
-                 "lr": 0.0012,
+                 "lr": 0.008,
                  "betas": (0.8, 0.95),
                  "eps": 1e-10,
                  "weight_decay": 0},
@@ -39,7 +39,7 @@ class CustomTrainer(Trainer):
                 # AdamW: output head
                 {"params": head_params,
                  "use_muon": False,
-                 "lr": 0.0012,
+                 "lr": 0.008,
                  "betas": (0.8, 0.95),
                  "eps": 1e-10,
                  "weight_decay": 0},

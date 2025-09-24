@@ -4,9 +4,9 @@ class Hyperparameters:
     batch_size: int = 12 #32 #32 #64 #16                 # micro-batch size per gradient step
     seq_len: int = 1024 #384 #384
     vocab_size: int = 50_257
-    n_layer: int = 12 #6 #16 #8 #4
+    n_layer: int = 4 #6 #16 #8 #4
     n_head: int = 4 #8 #4
-    n_embed: int =  256 #384 #128 #384 #512 #256
+    n_embed: int =  512 #384 #128 #384 #512 #256
     dropout: float = 0 #0.01
     lr: float = 5e-4
     ckpt_path: str = './ckpt.pt'
