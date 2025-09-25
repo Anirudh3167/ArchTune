@@ -8,7 +8,7 @@ class Hyperparameters:
     n_head: int = 4 #8 #4
     n_embed: int =  512 #384 #128 #384 #512 #256
     dropout: float = 0 #0.01
-    lr: float = 5e-4
+    lr: float = 1e-3#5e-4
     ckpt_path: str = './ckpt.pt'
     device: str = 'cpu'
     bias: bool = False
