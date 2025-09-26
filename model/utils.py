@@ -31,8 +31,8 @@ def top_k_top_p_filtering(logits, top_k=0, top_p=1.0, filter_value=-float("Inf")
 
     return logits
 
-def norm(x: Tensor):
-    return F.rms_norm(x, (x.size(-1),))
+def norm(x: Tensor,eps:float=None):
+    return F.rms_norm(x, (x.size(-1),),eps=eps)
 
 class Rotary(nn.Module):
     def __init__(self, dim: int, max_seq_len: int):

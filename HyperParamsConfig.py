@@ -25,5 +25,8 @@ class Hyperparameters:
     loss_reduction = "mean"
 
     logits_softcapping: bool = False
+
+    # Gemma config
+    hidden_dim: int = 2048
     
 config = Hyperparameters()
