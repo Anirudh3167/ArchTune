@@ -11,8 +11,8 @@ class CausalSelfAttention(nn.Module):
         nn.init.zeros_(self.c_proj.weight)  # @Grad62304977
         self.is_gemma_model = is_gemma_model
         if self.is_gemma_model:
-            self.q_norm = RMSNorm(config.n_embed, eps=1e-6, bias=False)
-            self.k_norm = RMSNorm(config.n_embed, eps=1e-6, bias=False)
+            self.q_norm = RMSNorm(config.n_embed // config.n_head, eps=1e-6, bias=False)
+            self.k_norm = RMSNorm(config.n_embed // config.n_head, eps=1e-6, bias=False)
         self.rotary = Rotary(config.n_embed//config.n_head, config.seq_len)
         # regularization
         self.attn_dropout, self.resid_dropout = nn.Dropout(config.dropout), nn.Dropout(config.dropout)
