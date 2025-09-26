@@ -1,28 +1,33 @@
 import torch, torch.nn as nn, torch.nn.functional as F
 from tqdm.notebook import tqdm
-from .utils import top_k_top_p_filtering, norm, LayerNorm
+from .utils import top_k_top_p_filtering, norm, RMSNorm
 from .attention_layer import CausalSelfAttention
 from .mlp_layer import FeedForward
 
 class GemmaBlock(nn.Module):
     def __init__(self, config):
         super().__init__()
-        self.att = CausalSelfAttention(config)
+        self.att = CausalSelfAttention(config, is_gemma_model = True)
         self.ff = FeedForward(config)
+
+        self.pre_attention_norm = RMSNorm(config.n_embed, eps=1e-6, bias=False)
+        self.post_attention_norm = RMSNorm(config.n_embed, eps=1e-6, bias=False)
+        self.pre_mlp_norm = RMSNorm(config.n_embed, eps=1e-6, bias=False)
+        self.post_mlp_norm = RMSNorm(config.n_embed, eps=1e-6, bias=False)
 
     def forward(self,x):
         # Shortcut connection for attention block
         shortcut = x
-        x = norm(x,eps=1e-6)
+        x = self.pre_attention_norm(x)
         x_attn = self.att(x)
-        x_attn = norm(x_attn,eps=1e-6)
+        x_attn = self.post_attention_norm(x)
         x = shortcut + x_attn
 
         # Shortcut connection for feed forward block
         shortcut = x
-        x_ffn = norm(x,eps=1e-6)
+        x_ffn = self.pre_mlp_norm(x)
         x_ffn = self.ff(x_ffn)
-        x_ffn = norm(x_ffn,eps=1e-6)
+        x_ffn = self.post_mlp_norm(x_ffn)
         x = shortcut + x_ffn
         return x
 
@@ -39,6 +44,7 @@ class Gemma(nn.Module):
         self.token_embedding_table = nn.Embedding(self.vocab_size, config.n_embed)
         self.blocks = nn.ModuleList([GemmaBlock(config) for _ in range(config.n_layer)])
         self.lm_head = nn.Linear(config.n_embed,self.vocab_size, bias = False)
+        self.final_norm = RMSNorm(config.n_embed, eps=1e-6, bias=False)
         # self.token_embedding_table.weight = self.lm_head.weight  # https://paperswithcode.com/method/weight-tying
         nn.init.zeros_(self.lm_head.weight)  # @Grad62304977
         
@@ -56,7 +62,7 @@ class Gemma(nn.Module):
         x = self.token_embedding_table(input_ids) * (self.config.n_embed**0.5)
         # x = norm(x,eps=1e-6)
         for module in self.blocks:   x = module(x)
-        x = norm(x,eps=1e-6)
+        x = self.final_norm(x)
         logits = self.lm_head(x).float()
         # @Grad62304977 added tanh softcapping following Gemma 2 paper, @KoszarskyB reduced it from 30 to 15, @YouJiacheng shifted it by +15 (2*sigmoid(2*x)=tanh(x)+1)
         if self.config.logits_softcapping:
