@@ -78,7 +78,7 @@ class Rotary(nn.Module):
     
 
 
-class GemmaRotary(nn.Module):
+class GemmaRotary:
     def __init__(self, head_dim, theta_base=1_000_000, context_length=4096):
         """
         theta_base = 1_000_000 due to global only Rotary
