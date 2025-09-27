@@ -77,6 +77,28 @@ class Rotary(nn.Module):
         return torch.cat((y1, y2), 3).type_as(x_BTHD)
     
 
+class GemmaRotary(nn.Module):
+    def __init__(self, dim: int, max_seq_len: int):
+        super().__init__()
+        assert dim % 2 == 0
+        inv_freq = 1.0 / (10000 ** (torch.arange(0, dim, 2).float() / dim))
+        t = torch.arange(max_seq_len, dtype=torch.float32)
+        freqs = torch.einsum('i,j->ij', t, inv_freq)
+        emb = torch.cat((freqs, freqs), dim=-1)  # duplicate for even/odd
+        self.register_buffer("cos", emb.cos(), persistent=False)
+        self.register_buffer("sin", emb.sin(), persistent=False)
+
+    def forward(self, x: Tensor) -> Tensor:
+        seq_len = x.size(-2)
+        cos = self.cos[:seq_len].unsqueeze(0).unsqueeze(0)  # [1, 1, seq_len, dim]
+        sin = self.sin[:seq_len].unsqueeze(0).unsqueeze(0)
+
+        x1 = x[..., :x.size(-1) // 2]
+        x2 = x[..., x.size(-1) // 2:]
+        x_rot = torch.cat((-x2, x1), dim=-1)
+        return (x * cos + x_rot * sin).type_as(x)
+
+
 class LayerNorm(nn.Module):
     """ LayerNorm but with an optional bias. PyTorch doesn't support simply bias=False """
     def __init__(self, ndim, bias):

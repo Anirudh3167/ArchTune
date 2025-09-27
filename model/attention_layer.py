@@ -1,5 +1,5 @@
 import torch, torch.nn as nn, torch.nn.functional as F
-from .utils import Rotary, norm, RMSNorm
+from .utils import GemmaRotary, Rotary, norm, RMSNorm
 import torch.nn.functional as F
 
 class CausalSelfAttention(nn.Module):
@@ -42,24 +42,24 @@ class CausalSelfAttention(nn.Module):
 class GroupedQueryAttention(nn.Module):
     def __init__(self, config):
         super().__init__()
-        assert config.num_heads % config.num_kv_groups == 0, "config.num_heads must be divisible by config.num_kv_groups"
+        assert config.n_head % config.n_kv_groups == 0, "config.n_head must be divisible by config.n_kv_groups"
 
-        self.num_heads = config.num_heads
-        self.num_kv_groups = config.num_kv_groups
-        self.group_size = config.num_heads // config.num_kv_groups
+        self.num_heads = config.n_head
+        self.num_kv_groups = config.n_kv_groups
+        self.group_size = config.n_head // config.n_kv_groups
 
         if config.head_dim is None:
-            assert config.n_embed % config.num_heads == 0, "`config.n_embed` must be divisible by `config.num_heads` if `head_dim` is not set"
-            head_dim = config.n_embed // config.num_heads
+            assert config.n_embed % config.n_head == 0, "`config.n_embed` must be divisible by `config.n_head` if `head_dim` is not set"
+            head_dim = config.n_embed // config.n_head
         else:
             head_dim = config.head_dim
 
         self.head_dim = head_dim
-        self.d_out = config.num_heads * head_dim
+        self.d_out = config.n_head * head_dim
 
         self.W_query = nn.Linear(config.n_embed, self.d_out, bias=False)
-        self.W_key = nn.Linear(config.n_embed, config.num_kv_groups * head_dim, bias=False)
-        self.W_value = nn.Linear(config.n_embed, config.num_kv_groups * head_dim, bias=False)
+        self.W_key = nn.Linear(config.n_embed, config.n_kv_groups * head_dim, bias=False)
+        self.W_value = nn.Linear(config.n_embed, config.n_kv_groups * head_dim, bias=False)
 
         self.out_proj = nn.Linear(self.d_out, config.n_embed, bias=False)
 
@@ -69,7 +69,7 @@ class GroupedQueryAttention(nn.Module):
         else:
             self.q_norm = self.k_norm = None
         
-        self.rotary = Rotary(config.n_embed//config.n_head, config.seq_len)
+        self.rotary = GemmaRotary(config.n_embed//config.n_head, config.seq_len)
 
         if config.query_pre_attn_scalar is not None:
             self.scaling = (config.query_pre_attn_scalar) ** -0.5
