@@ -28,5 +28,9 @@ class Hyperparameters:
 
     # Gemma config
     hidden_dim: int = 2048
+    query_pre_attn_scalar: int = 256
+    head_dim: int = 256
+    qk_norm: int = True
+    n_kv_groups: int = 1
     
 config = Hyperparameters()

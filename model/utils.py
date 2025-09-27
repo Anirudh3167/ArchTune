@@ -44,16 +44,14 @@ class RMSNorm(nn.Module):
 
     def forward(self, x):
         # Match HF Gemma3: compute norm in float32, then scale by (1 + w)
-        input_dtype = x.dtype
-        x_f = x.float()
-        var = x_f.pow(2).mean(dim=-1, keepdim=True)
-        x_norm = x_f * torch.rsqrt(var + self.eps)
-        out = x_norm * (1.0 + self.scale.float())
+        var = x.pow(2).mean(dim=-1, keepdim=True)
+        x_norm = x * torch.rsqrt(var + self.eps)
+        out = x_norm * (1.0 + self.scale)
 
         if self.shift is not None:
-            out = out + self.shift.float()
+            out = out + self.shift
 
-        return out.to(input_dtype)
+        return out
 
 
 class Rotary(nn.Module):

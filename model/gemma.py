@@ -1,13 +1,13 @@
 import torch, torch.nn as nn, torch.nn.functional as F
 from tqdm.notebook import tqdm
-from .utils import top_k_top_p_filtering, norm, RMSNorm
-from .attention_layer import CausalSelfAttention
+from .utils import top_k_top_p_filtering, RMSNorm
+from .attention_layer import GroupedQueryAttention
 from .mlp_layer import FeedForward
 
 class GemmaBlock(nn.Module):
     def __init__(self, config):
         super().__init__()
-        self.att = CausalSelfAttention(config, is_gemma_model = True)
+        self.att = GroupedQueryAttention(config)
         self.ff = FeedForward(config)
 
         self.pre_attention_norm = RMSNorm(config.n_embed, eps=1e-6, bias=False)
