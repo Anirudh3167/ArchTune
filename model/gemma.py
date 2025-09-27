@@ -59,8 +59,9 @@ class Gemma(nn.Module):
     def forward(self, input_ids, labels = None, **kwargs):
         # x : (Batch_Size, Seq_len)    # targets : (Batch_Size, Seq_len)
         B, S = input_ids.shape
-        x = self.token_embedding_table(input_ids) * (self.config.n_embed**0.5)
-        # x = norm(x,eps=1e-6)
+        x = self.token_embedding_table(input_ids) 
+        if self.config.use_embed_scaling:
+            x *= (self.config.n_embed**0.5)
         for module in self.blocks:   x = module(x)
         x = self.final_norm(x)
         logits = self.lm_head(x).float()

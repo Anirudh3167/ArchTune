@@ -41,6 +41,7 @@ class CausalSelfAttention(nn.Module):
 
 class GroupedQueryAttention(nn.Module):
     def __init__(self, config):
+        
         super().__init__()
         assert config.n_head % config.n_kv_groups == 0, "config.n_head must be divisible by config.n_kv_groups"
 

@@ -32,5 +32,8 @@ class Hyperparameters:
     head_dim: int = 256
     qk_norm: int = True
     n_kv_groups: int = 1
+
+    # Additional Customization Config
+    use_embed_scaling: bool = False
     
 config = Hyperparameters()
