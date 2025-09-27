@@ -77,26 +77,50 @@ class Rotary(nn.Module):
         return torch.cat((y1, y2), 3).type_as(x_BTHD)
     
 
+
 class GemmaRotary(nn.Module):
-    def __init__(self, dim: int, max_seq_len: int):
-        super().__init__()
-        assert dim % 2 == 0
-        inv_freq = 1.0 / (10000 ** (torch.arange(0, dim, 2).float() / dim))
-        t = torch.arange(max_seq_len, dtype=torch.float32)
-        freqs = torch.einsum('i,j->ij', t, inv_freq)
-        emb = torch.cat((freqs, freqs), dim=-1)  # duplicate for even/odd
-        self.register_buffer("cos", emb.cos(), persistent=False)
-        self.register_buffer("sin", emb.sin(), persistent=False)
+    def __init__(self, head_dim, theta_base=1_000_000, context_length=4096):
+        """
+        theta_base = 1_000_000 due to global only Rotary
+        """
+        assert head_dim % 2 == 0, "Embedding dimension must be even"
 
-    def forward(self, x: Tensor) -> Tensor:
-        seq_len = x.size(-2)
-        cos = self.cos[:seq_len].unsqueeze(0).unsqueeze(0)  # [1, 1, seq_len, dim]
-        sin = self.sin[:seq_len].unsqueeze(0).unsqueeze(0)
+        # Compute the inverse frequencies
+        inv_freq = 1.0 / (theta_base ** (torch.arange(0, head_dim, 2)[: (head_dim // 2)].float() / head_dim))
 
-        x1 = x[..., :x.size(-1) // 2]
-        x2 = x[..., x.size(-1) // 2:]
-        x_rot = torch.cat((-x2, x1), dim=-1)
-        return (x * cos + x_rot * sin).type_as(x)
+        # Generate position indices
+        positions = torch.arange(context_length)
+
+        # Compute the angles
+        angles = positions[:, None] * inv_freq[None, :]  # Shape: (context_length, head_dim // 2)
+
+        # Expand angles to match the head_dim
+        angles = torch.cat([angles, angles], dim=1)  # Shape: (context_length, head_dim)
+
+        # Precompute sine and cosine
+        self.cos = torch.cos(angles)
+        self.sin = torch.sin(angles)
+
+
+    def forward(self,x):
+        # x: (batch_size, num_heads, seq_len, head_dim)
+        batch_size, num_heads, seq_len, head_dim = x.shape
+        assert head_dim % 2 == 0, "Head dimension must be even"
+
+        # Split x into first half and second half
+        x1 = x[..., : head_dim // 2]  # First half
+        x2 = x[..., head_dim // 2 :]  # Second half
+
+        # Adjust sin and cos shapes
+        cos = self.cos[:seq_len, :].unsqueeze(0).unsqueeze(0)  # Shape: (1, 1, seq_len, head_dim)
+        sin = self.sin[:seq_len, :].unsqueeze(0).unsqueeze(0)
+
+        # Apply the rotary transformation
+        rotated = torch.cat((-x2, x1), dim=-1)
+        x_rotated = (x * cos) + (rotated * self.sin)
+
+        # It's ok to use lower-precision after applying cos and sin rotation
+        return x_rotated
 
 
 class LayerNorm(nn.Module):

@@ -69,7 +69,7 @@ class GroupedQueryAttention(nn.Module):
         else:
             self.q_norm = self.k_norm = None
         
-        self.rotary = GemmaRotary(config.n_embed//config.n_head, config.seq_len)
+        self.rotary = GemmaRotary(head_dim=head_dim, context_length=config.seq_len)
 
         if config.query_pre_attn_scalar is not None:
             self.scaling = (config.query_pre_attn_scalar) ** -0.5
