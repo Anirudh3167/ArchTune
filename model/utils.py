@@ -119,7 +119,7 @@ class GemmaRotary(nn.Module):
 
         # Apply the rotary transformation
         rotated = torch.cat((-x2, x1), dim=-1)
-        x_rotated = (x * cos) + (rotated * self.sin)
+        x_rotated = (x * cos) + (rotated * sin)
 
         # It's ok to use lower-precision after applying cos and sin rotation
         return x_rotated
