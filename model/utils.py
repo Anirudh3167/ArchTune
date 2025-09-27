@@ -78,11 +78,12 @@ class Rotary(nn.Module):
     
 
 
-class GemmaRotary:
+class GemmaRotary(nn.Module):
     def __init__(self, head_dim, theta_base=1_000_000, context_length=4096):
         """
         theta_base = 1_000_000 due to global only Rotary
         """
+        super().__init__()
         assert head_dim % 2 == 0, "Embedding dimension must be even"
 
         # Compute the inverse frequencies
