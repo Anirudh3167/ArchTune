@@ -105,6 +105,7 @@ class GemmaRotary(nn.Module):
 
     def forward(self,x):
         # x: (batch_size, num_heads, seq_len, head_dim)
+        device = x.device
         batch_size, num_heads, seq_len, head_dim = x.shape
         assert head_dim % 2 == 0, "Head dimension must be even"
 
@@ -113,8 +114,8 @@ class GemmaRotary(nn.Module):
         x2 = x[..., head_dim // 2 :]  # Second half
 
         # Adjust sin and cos shapes
-        cos = self.cos[:seq_len, :].unsqueeze(0).unsqueeze(0)  # Shape: (1, 1, seq_len, head_dim)
-        sin = self.sin[:seq_len, :].unsqueeze(0).unsqueeze(0)
+        cos = self.cos[:seq_len, :].unsqueeze(0).unsqueeze(0).to(device)  # Shape: (1, 1, seq_len, head_dim)
+        sin = self.sin[:seq_len, :].unsqueeze(0).unsqueeze(0).to(device)
 
         # Apply the rotary transformation
         rotated = torch.cat((-x2, x1), dim=-1)
