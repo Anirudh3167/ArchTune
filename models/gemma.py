@@ -202,7 +202,7 @@ class Gemma3Model(nn.Module):
     
         # --- sampling branch ---
         for _ in tqdm(range(num_tokens), desc="Generating (sampling):", leave=False):
-            out = self(tokens[-self.cfg["context_length"]:].unsqueeze(0))["logits"][0, -1]  # logits (vocab,)
+            out = self(tokens[-self.config.seq_len:].unsqueeze(0))["logits"][0, -1]  # logits (vocab,)
     
             # --- repetition penalty (HuggingFace style) ---
             if repetition_penalty != 1.0:
