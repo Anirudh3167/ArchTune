@@ -1,5 +1,4 @@
-# from transformers import AutoTokenizer
-from transformers import GPT2TokenizerFast
+from transformers import AutoTokenizer
 
 def next_multiple(curr_val: int, multiple: int = 128) -> int:
     return curr_val + (multiple - (curr_val%multiple))
@@ -18,9 +17,9 @@ def get_tokenizer(model_name: str = None, add_special_tokens: bool = True):
         tokenizer: HuggingFace tokenizer
     """
     # Default tokenizer for GPT models (can override via model_name)
-    # tokenizer_name = model_name or "gpt2"
-    # tokenizer = AutoTokenizer.from_pretrained(tokenizer_name, use_fast=True)
-    tokenizer = GPT2TokenizerFast()
+    tokenizer_name = model_name or "gpt2"
+    tokenizer = AutoTokenizer.from_pretrained(tokenizer_name, use_fast=True)
+
     if add_special_tokens:
         # Define missing special tokens
         special_tokens = {}
