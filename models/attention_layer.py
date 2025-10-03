@@ -1,5 +1,5 @@
 import torch, torch.nn as nn, torch.nn.functional as F
-from .utils import GemmaRotary, Rotary, norm, RMSNorm
+from .utils import Rotary, norm, RMSNorm, apply_rope
 import torch.nn.functional as F
 
 class CausalSelfAttention(nn.Module):
@@ -40,48 +40,43 @@ class CausalSelfAttention(nn.Module):
 
 
 class GroupedQueryAttention(nn.Module):
-    def __init__(self, config):
-        
+    def __init__(
+        self, d_in, num_heads, num_kv_groups, head_dim=None, qk_norm=False,
+        query_pre_attn_scalar=None, dtype=None,
+    ):
         super().__init__()
-        assert config.n_head % config.n_kv_groups == 0, "config.n_head must be divisible by config.n_kv_groups"
+        assert num_heads % num_kv_groups == 0, "num_heads must be divisible by num_kv_groups"
 
-        self.num_heads = config.n_head
-        self.num_kv_groups = config.n_kv_groups
-        self.group_size = config.n_head // config.n_kv_groups
+        self.num_heads = num_heads
+        self.num_kv_groups = num_kv_groups
+        self.group_size = num_heads // num_kv_groups
 
-        if config.head_dim is None:
-            assert config.n_embed % config.n_head == 0, "`config.n_embed` must be divisible by `config.n_head` if `head_dim` is not set"
-            head_dim = config.n_embed // config.n_head
-        else:
-            head_dim = config.head_dim
+        if head_dim is None:
+            assert d_in % num_heads == 0, "`d_in` must be divisible by `num_heads` if `head_dim` is not set"
+            head_dim = d_in // num_heads
 
         self.head_dim = head_dim
-        self.d_out = config.n_head * head_dim
+        self.d_out = num_heads * head_dim
 
-        self.W_query = nn.Linear(config.n_embed, self.d_out, bias=False)
-        self.W_key = nn.Linear(config.n_embed, config.n_kv_groups * head_dim, bias=False)
-        self.W_value = nn.Linear(config.n_embed, config.n_kv_groups * head_dim, bias=False)
+        self.W_query = nn.Linear(d_in, self.d_out, bias=False)
+        self.W_key = nn.Linear(d_in, num_kv_groups * head_dim, bias=False)
+        self.W_value = nn.Linear(d_in, num_kv_groups * head_dim, bias=False)
 
-        self.out_proj = nn.Linear(self.d_out, config.n_embed, bias=False)
+        self.out_proj = nn.Linear(self.d_out, d_in, bias=False)
 
-        if config.qk_norm:
+        if qk_norm:
             self.q_norm = RMSNorm(head_dim, eps=1e-6)
             self.k_norm = RMSNorm(head_dim, eps=1e-6)
         else:
             self.q_norm = self.k_norm = None
-        
-        self.rotary = GemmaRotary(head_dim=head_dim, context_length=config.seq_len)
 
-        if config.query_pre_attn_scalar is not None:
-            self.scaling = (config.query_pre_attn_scalar) ** -0.5
+        if query_pre_attn_scalar is not None:
+            self.scaling = (query_pre_attn_scalar) ** -0.5
         else:
             self.scaling = (head_dim) ** -0.5
 
-        # flash attention make GPU go brrrrr but support is only in PyTorch >= 2.0
-        self.flash = hasattr(torch.nn.functional, 'scaled_dot_product_attention')
 
-
-    def forward(self, x):
+    def forward(self, x, mask, cos, sin):
         b, num_tokens, _ = x.shape
 
         # Apply projections
@@ -101,8 +96,8 @@ class GroupedQueryAttention(nn.Module):
             keys = self.k_norm(keys)
 
         # Apply RoPE
-        queries = self.rotary(queries)
-        keys = self.rotary(keys)
+        queries = apply_rope(queries, cos, sin)
+        keys = apply_rope(keys, cos, sin)
 
         # Expand K and V to match number of heads
         keys = keys.repeat_interleave(self.group_size, dim=1)
@@ -111,16 +106,10 @@ class GroupedQueryAttention(nn.Module):
         # Scale queries
         queries = queries * self.scaling
 
-        # Attention using PyTorch SDPA with FlashAttention backend
-        context = F.scaled_dot_product_attention(
-            queries,   # [b, h, t, d]
-            keys,      # [b, h, t, d]
-            values,    # [b, h, t, d]
-            attn_mask=None,      # No explicit mask needed
-            dropout_p=0.0,       # Or your dropout value
-            is_causal=True       # Enables causal masking
-        )
+        # Attention
+        attn_scores = queries @ keys.transpose(2, 3)
+        attn_scores = attn_scores.masked_fill(mask, -torch.inf)
+        attn_weights = torch.softmax(attn_scores, dim=-1)
 
-        # Reshape context and project
-        context = context.transpose(1, 2).reshape(b, num_tokens, self.d_out)
+        context = (attn_weights @ values).transpose(1, 2).reshape(b, num_tokens, self.d_out)
         return self.out_proj(context)

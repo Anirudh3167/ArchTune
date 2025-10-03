@@ -12,7 +12,6 @@ class MLP(nn.Module):
         x = self.c_fc(x)
         x = F.relu(x).square()
         return self.dropout(self.c_proj(x))
-    
 
 class FeedForward(nn.Module):
     def __init__(self, config):

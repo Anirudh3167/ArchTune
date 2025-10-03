@@ -1,50 +1,40 @@
 import torch, torch.nn as nn, torch.nn.functional as F
 from tqdm.notebook import tqdm
-from .utils import top_k_top_p_filtering, RMSNorm
-from .attention_layer import GroupedQueryAttention
-from .mlp_layer import FeedForward
+from .utils import top_k_top_p_filtering, norm, LayerNorm
+from .attention_layer import CausalSelfAttention
+from .feedforward import MLP
 
-class GemmaBlock(nn.Module):
-    def __init__(self, config):
+class Block(nn.Module):
+    def __init__(self, config, use_layer_norm: bool = False):
         super().__init__()
-        self.att = GroupedQueryAttention(config)
-        self.ff = FeedForward(config)
+        self.csa = CausalSelfAttention(config)
+        self.mlp = MLP(config)
+        self.use_layer_norm = use_layer_norm
+        if use_layer_norm:
+            self.ln1, self.ln2 = [LayerNorm(config.n_embed,config.bias) for _ in range(2)]
 
-        self.pre_attention_norm = RMSNorm(config.n_embed, eps=1e-6, bias=False)
-        self.post_attention_norm = RMSNorm(config.n_embed, eps=1e-6, bias=False)
-        self.pre_mlp_norm = RMSNorm(config.n_embed, eps=1e-6, bias=False)
-        self.post_mlp_norm = RMSNorm(config.n_embed, eps=1e-6, bias=False)
+    def forward(self, x):
+        y = self.ln1(x) if self.use_layer_norm else norm(x)
+        x = x + self.csa(y)
+        y = self.ln2(x) if self.use_layer_norm else norm(x)
+        return x + self.mlp(y)
 
-    def forward(self,x):
-        # Shortcut connection for attention block
-        shortcut = x
-        x = self.pre_attention_norm(x)
-        x_attn = self.att(x)
-        x_attn = self.post_attention_norm(x)
-        x = shortcut + x_attn
-
-        # Shortcut connection for feed forward block
-        shortcut = x
-        x_ffn = self.pre_mlp_norm(x)
-        x_ffn = self.ff(x_ffn)
-        x_ffn = self.post_mlp_norm(x_ffn)
-        x = shortcut + x_ffn
-        return x
-
-
-class Gemma(nn.Module):
-    def __init__(self, config, tokenizer):
+class GPT(nn.Module):
+    def __init__(self, config, tokenizer, use_layer_norm: bool = False):
         """
         Args:
             config: Config
             tokenizer: Tokenizer
+            use_layer_norm: bool = False (default rms_norm)
         """
         super().__init__()
         self.vocab_size = config.vocab_size
+        self.use_layer_norm = use_layer_norm
         self.token_embedding_table = nn.Embedding(self.vocab_size, config.n_embed)
-        self.blocks = nn.ModuleList([GemmaBlock(config) for _ in range(config.n_layer)])
+        self.blocks = nn.ModuleList([Block(config, use_layer_norm) for _ in range(config.n_layer)])
+        if self.use_layer_norm:
+            self.ln = LayerNorm(config.n_embed,config.bias)
         self.lm_head = nn.Linear(config.n_embed,self.vocab_size, bias = False)
-        self.final_norm = RMSNorm(config.n_embed, eps=1e-6, bias=False)
         # self.token_embedding_table.weight = self.lm_head.weight  # https://paperswithcode.com/method/weight-tying
         nn.init.zeros_(self.lm_head.weight)  # @Grad62304977
         
@@ -59,11 +49,9 @@ class Gemma(nn.Module):
     def forward(self, input_ids, labels = None, **kwargs):
         # x : (Batch_Size, Seq_len)    # targets : (Batch_Size, Seq_len)
         B, S = input_ids.shape
-        x = self.token_embedding_table(input_ids) 
-        if self.config.use_embed_scaling:
-            x *= (self.config.n_embed**0.5)
+        x = norm(self.token_embedding_table(input_ids))
         for module in self.blocks:   x = module(x)
-        x = self.final_norm(x)
+        x = self.ln(x) if self.use_layer_norm else norm(x)
         logits = self.lm_head(x).float()
         # @Grad62304977 added tanh softcapping following Gemma 2 paper, @KoszarskyB reduced it from 30 to 15, @YouJiacheng shifted it by +15 (2*sigmoid(2*x)=tanh(x)+1)
         if self.config.logits_softcapping:

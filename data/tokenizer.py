@@ -1,10 +1,11 @@
-from transformers import AutoTokenizer
+# from transformers import AutoTokenizer
+from transformers import GPT2TokenizerFast
 
 def next_multiple(curr_val: int, multiple: int = 128) -> int:
     return curr_val + (multiple - (curr_val%multiple))
 
 
-def get_tokenizer(model_type: str = "gpt2", model_name: str = None, add_special_tokens: bool = True):
+def get_tokenizer(model_name: str = None, add_special_tokens: bool = True):
     """
     Load a tokenizer with common configs.
     
@@ -17,23 +18,24 @@ def get_tokenizer(model_type: str = "gpt2", model_name: str = None, add_special_
         tokenizer: HuggingFace tokenizer
     """
     # Default tokenizer for GPT models (can override via model_name)
-    tokenizer_name = model_name or "gpt2"
-    tokenizer = AutoTokenizer.from_pretrained(tokenizer_name, use_fast=True)
-
+    # tokenizer_name = model_name or "gpt2"
+    # tokenizer = AutoTokenizer.from_pretrained(tokenizer_name, use_fast=True)
+    tokenizer = GPT2TokenizerFast()
     if add_special_tokens:
-        # Handle missing pad token
+        # Define missing special tokens
+        special_tokens = {}
         if tokenizer.pad_token is None:
-            tokenizer.add_special_tokens({'pad_token': '<|pad|>'})
+            special_tokens["pad_token"] = "<|pad|>"
+        if tokenizer.eos_token is None:
+            special_tokens["eos_token"] = "<|endoftext|>"
+        if tokenizer.bos_token is None:
+            special_tokens["bos_token"] = "<|startoftext|>"
+        if tokenizer.unk_token is None:
+            special_tokens["unk_token"] = "<|unk|>"
 
-        # Set default special tokens if missing
-        special_tokens = {
-            "eos_token": tokenizer.eos_token or "<|endoftext|>",
-            "bos_token": tokenizer.bos_token or "<|startoftext|>",
-            "unk_token": tokenizer.unk_token or "<|unk|>",
-            "pad_token": tokenizer.pad_token
-        }
-
-        tokenizer.add_special_tokens(special_tokens)
+        # Only add if at least one is missing
+        if special_tokens:
+            tokenizer.add_special_tokens(special_tokens)
 
     # Optional: round max length to nearest multiple of 128
     target_vocab_size = next_multiple(len(tokenizer), 128)

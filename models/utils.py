@@ -31,6 +31,8 @@ def top_k_top_p_filtering(logits, top_k=0, top_p=1.0, filter_value=-float("Inf")
 
     return logits
 
+################
+# Normalisations
 def norm(x: Tensor,eps:float=None):
     return F.rms_norm(x, (x.size(-1),),eps=eps)
 
@@ -53,7 +55,18 @@ class RMSNorm(nn.Module):
 
         return out
 
+class LayerNorm(nn.Module):
+    """ LayerNorm but with an optional bias. PyTorch doesn't support simply bias=False """
+    def __init__(self, ndim, bias):
+        super().__init__()
+        self.weight = nn.Parameter(torch.ones(ndim))
+        self.bias = nn.Parameter(torch.zeros(ndim)) if bias else None
 
+    def forward(self, input):
+        return F.layer_norm(input, self.weight.shape, self.weight, self.bias, 1e-5)
+
+#################
+# RoPE functions
 class Rotary(nn.Module):
     def __init__(self, dim: int, max_seq_len: int):
         super().__init__()
@@ -77,60 +90,44 @@ class Rotary(nn.Module):
         return torch.cat((y1, y2), 3).type_as(x_BTHD)
     
 
+def compute_rope_params(head_dim, theta_base=10_000, context_length=4096):
+    assert head_dim % 2 == 0, "Embedding dimension must be even"
 
-class GemmaRotary(nn.Module):
-    def __init__(self, head_dim, theta_base=1_000_000, context_length=4096):
-        """
-        theta_base = 1_000_000 due to global only Rotary
-        """
-        super().__init__()
-        assert head_dim % 2 == 0, "Embedding dimension must be even"
+    # Compute the inverse frequencies
+    inv_freq = 1.0 / (theta_base ** (torch.arange(0, head_dim, 2)[: (head_dim // 2)].float() / head_dim))
 
-        # Compute the inverse frequencies
-        inv_freq = 1.0 / (theta_base ** (torch.arange(0, head_dim, 2)[: (head_dim // 2)].float() / head_dim))
+    # Generate position indices
+    positions = torch.arange(context_length)
 
-        # Generate position indices
-        positions = torch.arange(context_length)
+    # Compute the angles
+    angles = positions[:, None] * inv_freq[None, :]  # Shape: (context_length, head_dim // 2)
 
-        # Compute the angles
-        angles = positions[:, None] * inv_freq[None, :]  # Shape: (context_length, head_dim // 2)
+    # Expand angles to match the head_dim
+    angles = torch.cat([angles, angles], dim=1)  # Shape: (context_length, head_dim)
 
-        # Expand angles to match the head_dim
-        angles = torch.cat([angles, angles], dim=1)  # Shape: (context_length, head_dim)
+    # Precompute sine and cosine
+    cos = torch.cos(angles)
+    sin = torch.sin(angles)
 
-        # Precompute sine and cosine
-        self.cos = torch.cos(angles)
-        self.sin = torch.sin(angles)
+    return cos, sin
 
 
-    def forward(self,x):
-        # x: (batch_size, num_heads, seq_len, head_dim)
-        device = x.device
-        batch_size, num_heads, seq_len, head_dim = x.shape
-        assert head_dim % 2 == 0, "Head dimension must be even"
+def apply_rope(x, cos, sin):
+    # x: (batch_size, num_heads, seq_len, head_dim)
+    batch_size, num_heads, seq_len, head_dim = x.shape
+    assert head_dim % 2 == 0, "Head dimension must be even"
 
-        # Split x into first half and second half
-        x1 = x[..., : head_dim // 2]  # First half
-        x2 = x[..., head_dim // 2 :]  # Second half
+    # Split x into first half and second half
+    x1 = x[..., : head_dim // 2]  # First half
+    x2 = x[..., head_dim // 2 :]  # Second half
 
-        # Adjust sin and cos shapes
-        cos = self.cos[:seq_len, :].unsqueeze(0).unsqueeze(0).to(device)  # Shape: (1, 1, seq_len, head_dim)
-        sin = self.sin[:seq_len, :].unsqueeze(0).unsqueeze(0).to(device)
+    # Adjust sin and cos shapes
+    cos = cos[:seq_len, :].unsqueeze(0).unsqueeze(0)  # Shape: (1, 1, seq_len, head_dim)
+    sin = sin[:seq_len, :].unsqueeze(0).unsqueeze(0)
 
-        # Apply the rotary transformation
-        rotated = torch.cat((-x2, x1), dim=-1)
-        x_rotated = (x * cos) + (rotated * sin)
+    # Apply the rotary transformation
+    rotated = torch.cat((-x2, x1), dim=-1)
+    x_rotated = (x * cos) + (rotated * sin)
 
-        # It's ok to use lower-precision after applying cos and sin rotation
-        return x_rotated
-
-
-class LayerNorm(nn.Module):
-    """ LayerNorm but with an optional bias. PyTorch doesn't support simply bias=False """
-    def __init__(self, ndim, bias):
-        super().__init__()
-        self.weight = nn.Parameter(torch.ones(ndim))
-        self.bias = nn.Parameter(torch.zeros(ndim)) if bias else None
-
-    def forward(self, input):
-        return F.layer_norm(input, self.weight.shape, self.weight, self.bias, 1e-5)
+    # It's ok to use lower-precision after applying cos and sin rotation
+    return x_rotated
