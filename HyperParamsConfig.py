@@ -9,6 +9,7 @@ class GPTHyperparameters:
     n_embed: int =  512 #384 #128 #384 #512 #256
     dropout: float = 0 #0.01
     lr: float = 1e-3#5e-4
+    hidden_lr: float = 1e-3  # Applicable for Muon
     ckpt_path: str = './ckpt.pt'
     device: str = 'cpu'
     bias: bool = False
@@ -54,13 +55,15 @@ class GemmaHyperparameters:
     
     dropout: float = 0 #0.01
     lr: float = 1e-3#5e-4
+    hidden_lr: float = 1e-3  # Applicable for Muon
+
     ckpt_path: str = './ckpt.pt'
     device: str = 'cpu'
     bias: bool = False
     out_dir: str = "./output_dir"
     epochs: int = 1 #2 #4 #3 #2 #1
     grad_accum: int = 1 #4 #1
-    weight_decay: float = 0.1
+    weight_decay: float = 0
     warmup_ratio: float = 0.02
     seed: int = 1337
     eval_steps=50#500
