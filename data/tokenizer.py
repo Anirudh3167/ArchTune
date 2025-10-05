@@ -4,7 +4,11 @@ def next_multiple(curr_val: int, multiple: int = 128) -> int:
     return curr_val + (multiple - (curr_val%multiple))
 
 
-def get_tokenizer(model_name: str = None, add_special_tokens: bool = True):
+def get_tokenizer(model_name: str = None, 
+                  special_tokens: dict = {"pad_token": "<|pad|>",
+                          "bos_token": "<|startoftext|>",
+                          "unk_token": "<|unk|>"}
+                ):
     """
     Load a tokenizer with common configs.
     
@@ -20,21 +24,8 @@ def get_tokenizer(model_name: str = None, add_special_tokens: bool = True):
     tokenizer_name = model_name or "gpt2"
     tokenizer = AutoTokenizer.from_pretrained(tokenizer_name, use_fast=True)
 
-    if add_special_tokens:
-        # Define missing special tokens
-        special_tokens = {}
-        if tokenizer.pad_token is None:
-            special_tokens["pad_token"] = "<|pad|>"
-        if tokenizer.eos_token is None:
-            special_tokens["eos_token"] = "<|endoftext|>"
-        if tokenizer.bos_token is None:
-            special_tokens["bos_token"] = "<|startoftext|>"
-        if tokenizer.unk_token is None:
-            special_tokens["unk_token"] = "<|unk|>"
-
-        # Only add if at least one is missing
-        if special_tokens:
-            tokenizer.add_special_tokens(special_tokens)
+    if special_tokens != {}:
+        tokenizer.add_special_tokens(special_tokens)
 
     # Optional: round max length to nearest multiple of 128
     target_vocab_size = next_multiple(len(tokenizer), 128)
