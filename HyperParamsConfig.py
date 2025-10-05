@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 @dataclass
 class GPTHyperparameters:
     batch_size: int = 12 #32 #32 #64 #16                 # micro-batch size per gradient step
@@ -28,6 +28,9 @@ class GPTHyperparameters:
 
     # Additional Customization Config
     use_embed_scaling: bool = False
+
+    def to_dict(self):
+        return asdict(self)
 
 @dataclass
 class GemmaHyperparameters:
@@ -70,3 +73,6 @@ class GemmaHyperparameters:
     logging_steps=50#500
     save_steps=1_000
     batch_size: int = 28 #32 #32 #64 #16                 # micro-batch size per gradient step
+    
+    def to_dict(self):
+        return asdict(self)
