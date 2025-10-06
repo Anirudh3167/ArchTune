@@ -18,7 +18,7 @@ def get_trainer_args(config):
                 learning_rate=config.lr,
                 # weight_decay=config.weight_decay,
                 warmup_ratio=config.warmup_ratio,
-                lr_scheduler_type="cosine",
+                # lr_scheduler_type="cosine",
                 dataloader_num_workers=3,
                 save_safetensors=False,
                 report_to=[],

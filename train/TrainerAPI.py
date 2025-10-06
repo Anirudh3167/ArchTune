@@ -1,12 +1,15 @@
 from transformers import Trainer
 from .Muon import MuonWithAuxAdam
+import torch
+from .lr_scheduler import MuonScheduler
 
 class CustomTrainer(Trainer):
     def create_optimizer(self):
         cfg = self.args
         if self.optimizer is None:
             hidden_matrix_params = [
-                p for n, p in self.model.blocks.named_parameters()
+                # p for n, p in self.model.blocks.named_parameters()
+                p for n, p in self.model.named_parameters()
                 if p.ndim >= 2 and "embed" not in n
             ]
             embed_params = [p for n, p in self.model.named_parameters() if "embed" in n]
@@ -32,3 +35,15 @@ class CustomTrainer(Trainer):
                 }
             ])
         return self.optimizer
+
+    def create_scheduler(self, num_training_steps: int, optimizer: torch.optim.Optimizer = None):
+        """
+        Override to use custom Muon scheduler with momentum warmup.
+        """
+        if self.lr_scheduler is None:
+            self.lr_scheduler = MuonScheduler(
+                optimizer=self.optimizer,
+                num_training_steps=num_training_steps,
+                cooldown_frac=getattr(self.args, "cooldown_frac", 0.1)
+            )
+        return self.lr_scheduler
