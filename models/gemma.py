@@ -1,11 +1,11 @@
 import torch, torch.nn as nn, torch.nn.functional as F
 from tqdm.notebook import tqdm
 from .utils import top_k_top_p_filtering, RMSNorm, compute_rope_params
-from .feedforward import FeedForward
+from .feedforward import FeedForward, SparseMoE
 from .attention_layer import GroupedQueryAttention
 
 class TransformerBlock(nn.Module):
-    def __init__(self, config, attn_type: str):
+    def __init__(self, config, attn_type: str, ff_layer_type: str):
         super().__init__()
         self.attn_type = attn_type
 
@@ -17,7 +17,10 @@ class TransformerBlock(nn.Module):
             qk_norm=config.qk_norm,
             query_pre_attn_scalar=config.query_pre_attn_scalar
         )
-        self.ff = FeedForward(config)
+        if ff_layer_type == 'ffn':
+            self.ff = FeedForward(config)
+        else:
+            self.ff = SparseMoE(config)
         self.input_layernorm = RMSNorm(config.n_embed, eps=1e-6)
         self.post_attention_layernorm = RMSNorm(config.n_embed, eps=1e-6)
         self.pre_feedforward_layernorm = RMSNorm(config.n_embed, eps=1e-6)
@@ -68,7 +71,7 @@ class Gemma3Model(nn.Module):
         self.tok_embedding = nn.Embedding(config.vocab_size, config.n_embed)
 
         self.blocks = nn.ModuleList([
-            TransformerBlock(config, attn_type)for attn_type in config.layer_types
+            TransformerBlock(config, attn_type, ff_layer_type)for attn_type,ff_layer_type in zip(config.layer_types, config.ff_layers)
         ])
 
         self.final_norm = RMSNorm(config.n_embed, eps=1e-6)

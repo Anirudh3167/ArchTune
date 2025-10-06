@@ -24,6 +24,11 @@ class GPTHyperparameters:
     logging_steps=50#500
     save_steps=1_000
 
+    
+    n_experts: int = 8
+    k_expts: int = 2
+    ff_layers = ["ffn","moe","moe","ffn"]
+
     logits_softcapping: bool = False
 
     # Additional Customization Config
@@ -55,6 +60,10 @@ class GemmaHyperparameters:
     ]
     query_pre_attn_scalar: int = 256
     use_embed_scaling: bool = False
+
+    n_experts: int = 8
+    k_expts: int = 2
+    ff_layer = ["ffn","moe","moe","ffn"]
     
     dropout: float = 0 #0.01
     lr: float = 1e-3#5e-4
