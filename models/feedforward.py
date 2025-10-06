@@ -68,26 +68,48 @@ class SparseMoE(nn.Module):
         self.experts = nn.ModuleList([Expert(config) for _ in range(config.n_experts)])
     
     def forward(self, x):
-        gating_output, indices = self.router(x)
+        gating_output, indices = self.router(x)  # indices: [B, T, top_k]
         final_output = torch.zeros_like(x)
 
-        # Reshape inputs for batch processing
-        flat_x = x.view(-1, x.size(-1))
-        flat_gating_output = gating_output.view(-1, gating_output.size(-1))
+        B, T, D = x.shape
+        flat_x = x.view(-1, D)  # [B*T, D]
+        flat_indices = indices.view(-1, self.topk)  # [B*T, top_k]
+        flat_gating_output = gating_output.view(-1, gating_output.size(-1))  # [B*T, n_experts]
 
-        # Process each expert in parallel
         for i, expert in enumerate(self.experts):
-            # Create a mask for the inputs where the current exper is in top-k
-            expert_mask = (indices == i).any(dim=-1)
-            flat_mask = expert_mask.view(-1)
+            # Mask where expert i is in the top_k for each token
+            expert_mask = (flat_indices == i).any(dim=-1)  # [B*T]
 
-            if flat_mask.any():
-                expert_input = flat_x[flat_mask]
-                expert_output = expert(expert_input)
-
-                # Extract and apply gating scores
-                gating_scores = flat_gating_output[flat_mask, i].unsqueeze(1)
+            if expert_mask.any():
+                expert_input = flat_x[expert_mask]
+                expert_output = expert(expert_input)  # [num_selected, D]
+                gating_scores = flat_gating_output[expert_mask, i].unsqueeze(1)
                 weighted_output = expert_output * gating_scores
-                final_output[flat_mask] += weighted_output.squeeze(1)
-        
+                final_output.view(-1, D)[expert_mask] += weighted_output
+
         return final_output
+
+    # def forward(self, x):
+    #     gating_output, indices = self.router(x)
+    #     final_output = torch.zeros_like(x)
+
+    #     # Reshape inputs for batch processing
+    #     flat_x = x.view(-1, x.size(-1))
+    #     flat_gating_output = gating_output.view(-1, gating_output.size(-1))
+
+    #     # Process each expert in parallel
+    #     for i, expert in enumerate(self.experts):
+    #         # Create a mask for the inputs where the current expert is in top-k
+    #         expert_mask = (indices == i).any(dim=-1)
+    #         flat_mask = expert_mask.view(-1)
+
+    #         if flat_mask.any():
+    #             expert_input = flat_x[flat_mask]
+    #             expert_output = expert(expert_input)
+
+    #             # Extract and apply gating scores
+    #             gating_scores = flat_gating_output[flat_mask, i].unsqueeze(1)
+    #             weighted_output = expert_output * gating_scores
+    #             final_output[flat_mask] += weighted_output.squeeze(1)
+        
+    #     return final_output
