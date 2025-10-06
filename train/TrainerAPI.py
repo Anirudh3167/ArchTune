@@ -8,8 +8,8 @@ class CustomTrainer(Trainer):
         cfg = self.args
         if self.optimizer is None:
             hidden_matrix_params = [
-                # p for n, p in self.model.blocks.named_parameters()
-                p for n, p in self.model.named_parameters()
+                p for n, p in self.model.blocks.named_parameters()
+                # p for n, p in self.model.named_parameters()
                 if p.ndim >= 2 and "embed" not in n
             ]
             embed_params = [p for n, p in self.model.named_parameters() if "embed" in n]

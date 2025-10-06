@@ -1,5 +1,3 @@
-from torch.optim.lr_scheduler import LambdaLR
-
 class MuonScheduler:
     def __init__(self, optimizer, num_training_steps, cooldown_frac=0.1):
         self.optimizer = optimizer
