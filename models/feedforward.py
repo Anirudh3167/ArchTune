@@ -72,6 +72,11 @@ class SparseMoE(nn.Module):
         final_output = torch.zeros_like(x)
 
         B, T, D = x.shape
+        E = len(self.experts)
+        # Sanity check: indices must be in valid range
+        assert (indices >= 0).all() and (indices < E).all(), \
+            f"Invalid expert index detected. Got max={indices.max()}, expected < {E}"
+
         flat_x = x.view(-1, D)  # [B*T, D]
         flat_indices = indices.view(-1, self.topk)  # [B*T, top_k]
         flat_gating_output = gating_output.view(-1, gating_output.size(-1))  # [B*T, n_experts]
