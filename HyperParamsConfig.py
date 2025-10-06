@@ -63,7 +63,7 @@ class GemmaHyperparameters:
 
     n_experts: int = 8
     k_expts: int = 2
-    ff_layer = ["ffn","moe","moe","ffn"]
+    ff_layers = ["ffn","moe","moe","ffn"]
     
     dropout: float = 0 #0.01
     lr: float = 1e-3#5e-4
