@@ -43,7 +43,7 @@ def create_scheduler(num_training_steps: int, optimizer = None):
     lr_scheduler = MuonScheduler(
         optimizer=optimizer,
         num_training_steps=num_training_steps,
-        cooldown_frac=0.1
+        cooldown_frac=0.45  # 45% training spent on cooldown of lr
         # cooldown_frac=getattr(cfg, "cooldown_frac", 0.1)
     )
     return lr_scheduler

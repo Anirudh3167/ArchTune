@@ -4,7 +4,8 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 from .evaluations import evaluate_generations, calculate_perplexity
 import torch
-
+from dataclasses import asdict
+from time import perf_counter
 
 def get_grad_norm(model):
     total_norm = 0.0
@@ -21,6 +22,7 @@ def train(
         train_dataset=None,
         eval_dataset=None,
         data_collator=None,
+        logger: bool | None = None,
 ):
     if train_config.num_epochs is None:
         train_config.num_epochs = 1
@@ -30,7 +32,15 @@ def train(
     steps_per_epoch = len(train_dataset) // (train_config.train_batch_size * train_config.gradient_accumulation_steps)
     train_config.num_train_steps = steps_per_epoch * train_config.num_epochs
 
-    accelerator = Accelerator(gradient_accumulation_steps=train_config.gradient_accumulation_steps)
+    # Accelerator initialization
+    accelerator = Accelerator(gradient_accumulation_steps=train_config.gradient_accumulation_steps,
+                              log_with="wandb" if logger else None)
+    
+    if logger:
+        accelerator.init_trackers(
+            project_name=train_config.project_name,
+            config=asdict(train_config),
+            )
 
     optimizer = build_muon_optimizer(model, train_config)
     lr_scheduler = create_scheduler(train_config.num_train_steps, optimizer)
@@ -47,16 +57,17 @@ def train(
             DataLoader(eval_dataset, collate_fn=data_collator, batch_size=train_config.eval_batch_size)
         )
 
+    overall_train_start_time = perf_counter()
     global_step = 0
     optimizer.zero_grad()
 
+    model.train()
     # Main training loop
     for epoch in range(train_config.num_epochs):
-        model.train()
         
         # Initialize tqdm for global steps
         loop = tqdm(total=steps_per_epoch, desc=f"Epoch {epoch + 1}", position=0, leave=True)
-
+        logger_start_time = perf_counter()
         for batch in train_loader:
             with accelerator.accumulate(model):
                 with accelerator.autocast():
@@ -89,10 +100,12 @@ def train(
                             "accuracy": accuracy.item(),
                             "lr": lr_scheduler.get_last_lr()[0],
                             "grad_norm": get_grad_norm(model),
+                            "time": perf_counter() - logger_start_time,
                             "perplexity": calculate_perplexity(logits, labels).item(),
                         }
                         accelerator.log(metrics, step=global_step)
                         accelerator.print(f"Epoch {epoch+1}, Step {global_step}: {metrics}")
+                        logger_start_time = perf_counter()
 
                     # Save model
                     if global_step % train_config.save_steps == 0:
@@ -103,14 +116,15 @@ def train(
 
                     # Evaluation
                     if eval_loader is not None and global_step % train_config.eval_steps == 0:
+                        eval_start_time = perf_counter()
                         model.eval()
                         eval_loss = 0.0
                         correct_predictions = 0
                         total_predictions = 0
                         total_perplexity = 0.0
-                        eval_iterator = tqdm(eval_loader, total=train_config.num_eval_steps, desc="Evaluating")
-                        if train_config.disable_eval_tqdm:
-                            eval_iterator = eval_loader
+                        eval_iterator = eval_loader
+                        if not train_config.disable_eval_tqdm:
+                            eval_iterator = tqdm(eval_loader, total=train_config.num_eval_steps, desc="Evaluating")
                         for eval_batch in eval_iterator:
                             with torch.no_grad():
                                 outputs = model(**eval_batch)
@@ -132,6 +146,7 @@ def train(
                             "eval_loss": avg_loss,
                             "eval_accuracy": eval_accuracy,
                             "eval_perplexity": eval_perplexity,
+                            "eval_time": perf_counter() - eval_start_time
                         }
                         metrics.update(evaluate_generations(model))
 
@@ -141,8 +156,9 @@ def train(
 
         loop.close()
 
-        # Save at end of epoch
-        accelerator.wait_for_everyone()
-        model.eval()
-        accelerator.save_model(model, train_config.output_dir + f"/checkpoint-{global_step}")
-        model.train()
+    # Save at end of training
+    accelerator.wait_for_everyone()
+    model.eval()
+    accelerator.save_model(model, train_config.output_dir + f"/checkpoint-{global_step}")
+    accelerator.end_training()
+    print(f"Total training time: {perf_counter() - overall_train_start_time}")
