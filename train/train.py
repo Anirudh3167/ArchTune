@@ -24,8 +24,10 @@ def train(
 ):
     if train_config.num_epochs is None:
         train_config.num_epochs = 1
+    if train_config.gradient_accumulation_steps is None:
+        train_config.gradient_accumulation_steps = 1
 
-    steps_per_epoch = len(train_dataset) // train_config.train_batch_size
+    steps_per_epoch = len(train_dataset) // (train_config.train_batch_size * train_config.gradient_accumulation_steps)
     train_config.num_train_steps = steps_per_epoch * train_config.num_epochs
 
     accelerator = Accelerator(gradient_accumulation_steps=train_config.gradient_accumulation_steps)
@@ -106,8 +108,10 @@ def train(
                         correct_predictions = 0
                         total_predictions = 0
                         total_perplexity = 0.0
-
-                        for eval_batch in tqdm(eval_loader, total=train_config.num_eval_steps, desc="Evaluating"):
+                        eval_iterator = tqdm(eval_loader, total=train_config.num_eval_steps, desc="Evaluating")
+                        if train_config.disable_eval_tqdm:
+                            eval_iterator = eval_loader
+                        for eval_batch in eval_iterator:
                             with torch.no_grad():
                                 outputs = model(**eval_batch)
                                 loss = outputs["loss"]
