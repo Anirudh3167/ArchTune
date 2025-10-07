@@ -41,7 +41,7 @@ def train(
         accelerator.init_trackers(
             project_name=train_config.project_name,
             config=asdict(train_config),
-            init_kwargs={"wandb": {"entity": train_config.wandb_entity}} if train_config.wandb_entity else None
+            # init_kwargs={"wandb": {"entity": train_config.wandb_entity}} if train_config.wandb_entity else None
             )
 
     optimizer = build_muon_optimizer(model, train_config)
