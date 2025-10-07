@@ -3,7 +3,7 @@ from .build_optimizer import build_muon_optimizer, create_scheduler
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from .evaluations import evaluate_generations, calculate_perplexity
-import torch
+import torch, wandb
 from dataclasses import asdict
 from time import perf_counter
 
@@ -40,8 +40,12 @@ def train(
         accelerator.init_trackers(
             project_name=train_config.project_name,
             config=asdict(train_config),
-            init_kwargs= {"wandb": {"mode": "online"}} # W&B online mode can be changed later
+            init_kwargs= {"wandb": {"mode": "online",
+                                    "dir": train_config.out_dir,
+                                    "project": train_config.project_name,
+                                    "config": asdict(train_config),}} # W&B online mode can be changed later
             )
+        wandb.watch(model, log="all",log_freq=max(50, train_config.logging_steps))
 
     optimizer = build_muon_optimizer(model, train_config)
     lr_scheduler = create_scheduler(train_config.num_train_steps, optimizer)
