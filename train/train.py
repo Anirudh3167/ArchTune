@@ -82,13 +82,15 @@ def train(
 
                     # Logging
                     if global_step % train_config.logging_steps == 0:
-                        accelerator.log({
+                        metrics = {
                             "loss": loss.item(),
                             "accuracy": accuracy.item(),
                             "lr": lr_scheduler.get_last_lr()[0],
                             "grad_norm": get_grad_norm(model),
                             "perplexity": calculate_perplexity(logits, labels).item(),
-                        }, step=global_step)
+                        }
+                        accelerator.log(metrics, step=global_step)
+                        accelerator.print(f"Epoch {epoch+1}, Step {global_step}: {metrics}")
 
                     # Save model
                     if global_step % train_config.save_steps == 0:
@@ -130,6 +132,7 @@ def train(
                         metrics.update(evaluate_generations(model))
 
                         accelerator.log(metrics, step=global_step)
+                        accelerator.print(f"Epoch {epoch+1}, Step {global_step}: {metrics}")
                         model.train()
 
         loop.close()
