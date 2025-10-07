@@ -28,7 +28,7 @@ def train(
     steps_per_epoch = len(train_dataset) // train_config.train_batch_size
     train_config.num_train_steps = steps_per_epoch * train_config.num_epochs
 
-    accelerator = Accelerator(gradient_accumulation_steps=train_config.gradient_accumulation_steps)  # or "bf16" depending on your hardware
+    accelerator = Accelerator(gradient_accumulation_steps=train_config.gradient_accumulation_steps)
 
     optimizer = build_muon_optimizer(model, train_config)
     lr_scheduler = create_scheduler(train_config.num_train_steps, optimizer)
@@ -48,11 +48,14 @@ def train(
     global_step = 0
     optimizer.zero_grad()
 
+    # Main training loop
     for epoch in range(train_config.num_epochs):
         model.train()
-        loop = tqdm(train_loader, total=steps_per_epoch, desc=f"Epoch {epoch+1}")
+        
+        # Initialize tqdm for global steps
+        loop = tqdm(total=steps_per_epoch, desc=f"Epoch {epoch + 1}", position=0, leave=True)
 
-        for batch in loop:
+        for batch in train_loader:
             with accelerator.accumulate(model):
                 with accelerator.autocast():
                     outputs = model(**batch)
@@ -69,6 +72,14 @@ def train(
                     optimizer.zero_grad()
                     global_step += 1
 
+                    # Update tqdm only when optimizer updates (i.e., global step)
+                    loop.set_postfix({
+                        "loss": loss.item(),
+                        "acc": accuracy.item(),
+                        "lr": lr_scheduler.get_last_lr()[0]
+                    })
+                    loop.update(1)
+
                     # Logging
                     if global_step % train_config.logging_steps == 0:
                         accelerator.log({
@@ -83,7 +94,7 @@ def train(
                     if global_step % train_config.save_steps == 0:
                         accelerator.wait_for_everyone()
                         model.eval()
-                        accelerator.save_model(model, train_config.output_dir + "/checkpoint-" + str(global_step))
+                        accelerator.save_model(model, train_config.output_dir + f"/checkpoint-{global_step}")
                         model.train()
 
                     # Evaluation
@@ -94,41 +105,37 @@ def train(
                         total_predictions = 0
                         total_perplexity = 0.0
 
-                        for batch in tqdm(eval_loader, total=train_config.num_eval_steps, desc="Evaluating"):
+                        for eval_batch in tqdm(eval_loader, total=train_config.num_eval_steps, desc="Evaluating"):
                             with torch.no_grad():
-                                outputs = model(**batch)
+                                outputs = model(**eval_batch)
                                 loss = outputs["loss"]
                                 logits = outputs["logits"]
-                                labels = batch["labels"]
+                                labels = eval_batch["labels"]
 
                                 eval_loss += loss.item()
-
-                                # Accuracy
                                 preds = logits.argmax(dim=-1)
                                 correct_predictions += preds.eq(labels).sum().item()
                                 total_predictions += labels.numel()
-
-                                # Perplexity (assumes calculate_perplexity returns scalar)
                                 total_perplexity += calculate_perplexity(logits, labels).item()
 
-
-                        all_preds = torch.cat(all_preds)
-                        all_labels = torch.cat(all_labels)
                         avg_loss = eval_loss / train_config.num_eval_steps
-                        accuracy = correct_predictions / total_predictions
-                        perplexity = total_perplexity / train_config.num_eval_steps
-
+                        eval_accuracy = correct_predictions / total_predictions
+                        eval_perplexity = total_perplexity / train_config.num_eval_steps
 
                         metrics = {
                             "eval_loss": avg_loss,
-                            "eval_accuracy": accuracy,
-                            "eval_perplexity": perplexity,
+                            "eval_accuracy": eval_accuracy,
+                            "eval_perplexity": eval_perplexity,
                         }
                         metrics.update(evaluate_generations(model))
 
                         accelerator.log(metrics, step=global_step)
                         model.train()
 
+        loop.close()
+
+        # Save at end of epoch
         accelerator.wait_for_everyone()
         model.eval()
-        accelerator.save_model(model, train_config.output_dir + "/final_checkpoint")
+        accelerator.save_model(model, train_config.output_dir + f"/checkpoint-{global_step}")
+        model.train()

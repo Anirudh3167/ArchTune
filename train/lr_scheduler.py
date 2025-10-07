@@ -4,6 +4,10 @@ class MuonScheduler:
         self.num_training_steps = num_training_steps
         self.cooldown_frac = cooldown_frac
         self.last_step = -1
+    
+    def get_last_lr(self):
+        return [group["lr"] for group in self.optimizer.param_groups]
+
 
     def get_lr_scale(self, step):
         x = step / self.num_training_steps
