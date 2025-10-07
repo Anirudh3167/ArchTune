@@ -41,7 +41,7 @@ def train(
             project_name=train_config.project_name,
             config=asdict(train_config),
             init_kwargs= {"wandb": {"mode": "online",
-                                    "dir": train_config.output_dir,,}} # W&B online mode can be changed later
+                                    "dir": train_config.output_dir,}} # W&B online mode can be changed later
             )
         wandb.watch(model, log="all",log_freq=max(50, train_config.logging_steps))
 
