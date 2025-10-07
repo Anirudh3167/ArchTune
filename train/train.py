@@ -34,9 +34,10 @@ def train(
 
     # Accelerator initialization
     accelerator = Accelerator(gradient_accumulation_steps=train_config.gradient_accumulation_steps,
+                              mixed_precision="fp16" if train_config.mixed_precision else None,
                               log_with="wandb" if logger else None)
     
-    if logger:
+    if logger and accelerator.is_main_process:
         accelerator.init_trackers(
             project_name=train_config.project_name,
             config=asdict(train_config),
