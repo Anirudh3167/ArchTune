@@ -28,7 +28,7 @@ def train(
     steps_per_epoch = len(train_dataset) // train_config.train_batch_size
     train_config.num_train_steps = steps_per_epoch * train_config.num_epochs
 
-    accelerator = Accelerator(mixed_precision="fp16")  # or "bf16" depending on your hardware
+    accelerator = Accelerator(gradient_accumulation_steps=train_config.gradient_accumulation_steps)  # or "bf16" depending on your hardware
 
     optimizer = build_muon_optimizer(model, train_config)
     lr_scheduler = create_scheduler(train_config.num_train_steps, optimizer)
