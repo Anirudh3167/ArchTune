@@ -63,7 +63,6 @@ def train(
 
     overall_train_start_time = perf_counter()
     global_step = 0
-    optimizer.zero_grad()
 
     model.train()
     # Main training loop
