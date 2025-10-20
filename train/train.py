@@ -14,8 +14,8 @@ def get_grad_norm(model):
         if p.grad is not None:
             param_norm = p.grad.norm(2)  # use p.grad directly, not .data
             total_norm += param_norm.pow(2)
-    total_norm = total_norm.sqrt()
-    return total_norm.item()
+    total_norm = total_norm**0.5
+    return total_norm
 
 
 
