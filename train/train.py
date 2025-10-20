@@ -109,6 +109,9 @@ def train(
                     "acc": overall_acc,
                     "lr": lr_scheduler.get_last_lr()[0]
                     })
+
+                    train_loss = 0
+                    train_acc = 0
                     loop.update(1)
 
                     # Logging
