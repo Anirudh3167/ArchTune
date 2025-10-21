@@ -7,6 +7,7 @@ import wandb
 # from dataclasses import asdict
 from time import perf_counter
 from .evalute import eval_loop
+from .utils import save_model
 
 def get_grad_norm(model):
     total_norm = 0.0
@@ -89,7 +90,7 @@ def train(
                     loss = outputs["loss"]
                     logits = outputs["logits"]
                     labels = batch["labels"]
-                    accuracy = logits.argmax(dim=-1).view(-1).eq(labels.view(-1)).float().mean()
+                    accuracy = logits.argmax(dim=-1).view(-1).eq(labels.view(-1)).float().sum()
 
                 train_loss += loss.item()
                 train_acc += accuracy.item()
@@ -130,9 +131,7 @@ def train(
 
                     # Save model
                     if global_step % train_config.save_steps == 0:
-                        accelerator.wait_for_everyone()
-                        model.eval()
-                        accelerator.save_model(model, train_config.output_dir + f"/checkpoint-{global_step}")
+                        save_model(model, accelerator, train_config.output_dir + f"/checkpoint-{global_step}")
                         model.train()
 
                     # Evaluation
@@ -145,8 +144,6 @@ def train(
         loop.close()
 
     # Save at end of training
-    accelerator.wait_for_everyone()
-    model.eval()
-    accelerator.save_model(model, train_config.output_dir + f"/checkpoint-{global_step}")
+    save_model(model, accelerator, train_config.output_dir + f"/checkpoint-{global_step}")
     accelerator.end_training()
     print(f"Total training time: {perf_counter() - overall_train_start_time}")
