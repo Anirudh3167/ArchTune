@@ -90,7 +90,7 @@ def train(
                     loss = outputs["loss"]
                     logits = outputs["logits"]
                     labels = batch["labels"]
-                    accuracy = logits.argmax(dim=-1).view(-1).eq(labels.view(-1)).float().sum()
+                    accuracy = logits.argmax(dim=-1).view(-1).eq(labels.view(-1)).float().mean()
 
                 train_loss += loss.item()
                 train_acc += accuracy.item()
@@ -104,7 +104,7 @@ def train(
 
                     # Update tqdm only when optimizer updates (i.e., global step)
                     overall_loss = train_loss / train_config.gradient_accumulation_steps
-                    overall_acc = train_acc / (train_config.seq_len * train_config.gradient_accumulation_steps)
+                    overall_acc = train_acc / train_config.gradient_accumulation_steps
                     loop.set_postfix({
                     "loss": overall_loss,
                     "acc": overall_acc,
