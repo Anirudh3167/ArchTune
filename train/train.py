@@ -65,7 +65,7 @@ def train(
             DataLoader(train_dataset, collate_fn=data_collator, batch_size=train_config.train_batch_size, shuffle=True)
         )
     else:
-        train_loader = train_dataset
+        train_loader = accelerator.prepare(train_dataset)
     eval_loader = None
     if eval_dataset is not None:
         train_config.num_eval_steps = len(eval_dataset) // train_config.eval_batch_size
@@ -74,7 +74,7 @@ def train(
                 DataLoader(eval_dataset, collate_fn=data_collator, batch_size=train_config.eval_batch_size)
             )
         else:
-            eval_loader = eval_dataset
+            eval_loader = accelerator.prepare(eval_dataset)
 
     overall_train_start_time = perf_counter()
     global_step = 0
