@@ -60,15 +60,17 @@ def train(
 
     # model, optimizer, lr_scheduler = accelerator.prepare(model, optimizer, lr_scheduler)
 
-    train_loader = accelerator.prepare(
-        DataLoader(train_dataset, collate_fn=data_collator, batch_size=train_config.train_batch_size, shuffle=True)
-    )
+    if type(train_loader) is not DataLoader:
+        train_loader = accelerator.prepare(
+            DataLoader(train_dataset, collate_fn=data_collator, batch_size=train_config.train_batch_size, shuffle=True)
+        )
     eval_loader = None
     if eval_dataset is not None:
         train_config.num_eval_steps = len(eval_dataset) // train_config.eval_batch_size
-        eval_loader = accelerator.prepare(
-            DataLoader(eval_dataset, collate_fn=data_collator, batch_size=train_config.eval_batch_size)
-        )
+        if type(eval_loader) is not DataLoader:
+            eval_loader = accelerator.prepare(
+                DataLoader(eval_dataset, collate_fn=data_collator, batch_size=train_config.eval_batch_size)
+            )
 
     overall_train_start_time = perf_counter()
     global_step = 0
