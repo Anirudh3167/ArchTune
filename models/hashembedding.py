@@ -47,7 +47,6 @@ class HashEmbeddingLayer(nn.Module):
         embedded = self.weight[buckets]  # (B, T, num_hash_functions, hidden_dim)
 
         # Apply sign
-        print(embedded.device, signs.device)
         embedded = embedded * signs.unsqueeze(-1)
 
         # Average across hash functions
