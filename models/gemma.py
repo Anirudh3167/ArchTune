@@ -162,7 +162,7 @@ class Gemma3Model(nn.Module):
         logits = self.lm_head(x)
         loss = None
         if labels is not None:
-            loss = F.cross_entropy(logits.reshape(-1, logits.size(-1)), labels.reshape(-1))
+            loss = F.cross_entropy(logits.reshape(-1, logits.size(-1)), labels.to(self.device).reshape(-1))
         return {"logits":logits, "loss":loss}
 
     @property
