@@ -55,7 +55,7 @@ class HashEmbeddingLayer(nn.Module):
 
         # Compute sign hash (+1 / -1)
         signs = ((ids * sign_a + sign_b) % 2) * 2 - 1
-        signs = signs.float()
+        signs = signs.to(device).float()
 
         # Lookup embeddings
         # (B, T, num_hash_functions, hidden_dim)
