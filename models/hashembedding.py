@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-class CustHashEmbeddingLayer(nn.Module):
+class HashEmbeddingLayer(nn.Module):
     def __init__(self, vocab_size, hidden_dim, bucket_size, num_hash_functions):
         super().__init__()
         self.vocab_size = vocab_size
