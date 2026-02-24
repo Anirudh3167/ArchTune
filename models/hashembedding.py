@@ -14,57 +14,46 @@ class HashEmbeddingLayer(nn.Module):
             torch.randn(bucket_size, hidden_dim) * 0.02
         )
 
-        # Fixed random hash parameters
+        # Fixed random hash parameters (buffers)
         self.register_buffer(
-            "hash_a",
-            torch.randint(1, bucket_size, (num_hash_functions,))
+            "hash_a", torch.randint(1, bucket_size, (num_hash_functions,), dtype=torch.long)
         )
         self.register_buffer(
-            "hash_b",
-            torch.randint(0, bucket_size, (num_hash_functions,))
+            "hash_b", torch.randint(0, bucket_size, (num_hash_functions,), dtype=torch.long)
         )
         self.register_buffer(
-            "sign_a",
-            torch.randint(1, bucket_size, (num_hash_functions,))
+            "sign_a", torch.randint(1, bucket_size, (num_hash_functions,), dtype=torch.long)
         )
         self.register_buffer(
-            "sign_b",
-            torch.randint(0, bucket_size, (num_hash_functions,))
+            "sign_b", torch.randint(0, bucket_size, (num_hash_functions,), dtype=torch.long)
         )
 
     def forward(self, input_ids):
+        # Ensure input is long and get device
+        input_ids = input_ids.long()
         device = input_ids.device
 
-        # input_ids: (B, T)
-        B, T = input_ids.shape
-        input_ids = input_ids.long()
-
         # Expand for multiple hashes
-        # shape: (B, T, H)
-        ids = input_ids.unsqueeze(-1)
+        ids = input_ids.unsqueeze(-1)  # (B, T, 1)
 
+        # Move buffers to input device dynamically (safe even with .to("cuda"))
         hash_a = self.hash_a.to(device)
         hash_b = self.hash_b.to(device)
         sign_a = self.sign_a.to(device)
         sign_b = self.sign_b.to(device)
 
+        # Compute bucket indices
+        buckets = (ids * hash_a + hash_b) % self.bucket_size  # (B, T, num_hash_functions)
 
-        # Compute hash bucket indices
-        buckets = (ids * hash_a + hash_b) % self.bucket_size
-        # shape: (B, T, num_hash_functions)
-
-        # Compute sign hash (+1 / -1)
+        # Compute sign (+1/-1)
         signs = ((ids * sign_a + sign_b) % 2) * 2 - 1
-        signs = signs.to(device).float()
+        signs = signs.float().to(device)  # ensure same device
 
-        # Lookup embeddings
-        # (B, T, num_hash_functions, hidden_dim)
-        embedded = self.weight[buckets]
+        # Lookup embeddings (weight must be on same device)
+        embedded = self.weight[buckets]  # (B, T, num_hash_functions, hidden_dim)
 
         # Apply sign
         embedded = embedded * signs.unsqueeze(-1)
 
         # Average across hash functions
-        output = embedded.mean(dim=2)
-
-        return output
+        return embedded.mean(dim=2)

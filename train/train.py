@@ -65,7 +65,7 @@ def train(
     if not lr_scheduler:
         lr_scheduler = create_scheduler(train_config.num_train_steps, optimizer)
 
-    model, optimizer, lr_scheduler = accelerator.prepare(model, optimizer, lr_scheduler)
+    # model, optimizer, lr_scheduler = accelerator.prepare(model, optimizer, lr_scheduler)
     train_loader, eval_loader = prepare_datasets(train_dataset, eval_dataset, collate_fn=data_collator,
                      train_config = train_config)
     overall_train_start_time = perf_counter()
