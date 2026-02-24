@@ -50,11 +50,11 @@ class HashEmbeddingLayer(nn.Module):
 
 
         # Compute hash bucket indices
-        buckets = (ids * self.hash_a + self.hash_b) % self.bucket_size
+        buckets = (ids * hash_a + hash_b) % self.bucket_size
         # shape: (B, T, num_hash_functions)
 
         # Compute sign hash (+1 / -1)
-        signs = ((ids * self.sign_a + self.sign_b) % 2) * 2 - 1
+        signs = ((ids * sign_a + sign_b) % 2) * 2 - 1
         signs = signs.float()
 
         # Lookup embeddings
