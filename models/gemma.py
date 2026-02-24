@@ -3,6 +3,7 @@ from tqdm.notebook import tqdm
 from .utils import top_k_top_p_filtering, RMSNorm, compute_rope_params
 from .feedforward import FeedForward, SparseMoE
 from .attention_layer import GroupedQueryAttention
+from .hashembedding import HashEmbeddingLayer
 
 class TransformerBlock(nn.Module):
     def __init__(self, config, attn_type: str, ff_layer_type: str):
@@ -69,6 +70,8 @@ class Gemma3Model(nn.Module):
 
         # Main model parameters
         self.tok_embedding = nn.Embedding(config.vocab_size, config.n_embed)
+        if config.embedding_type == 'hash':
+            self.tok_embedding = HashEmbeddingLayer(config.vocab_size, config.n_embed, config.bucket_size, config.num_hash_functions)
 
         self.blocks = nn.ModuleList([
             TransformerBlock(config, attn_type, ff_layer_type)for attn_type,ff_layer_type in zip(config.layer_types, config.ff_layers)

@@ -3,7 +3,8 @@ from dataclasses import asdict
 from time import perf_counter
 from .evaluations import calculate_perplexity
 from .evalute import eval_loop
-import torch
+import torch, wandb
+from torch.utils.data import DataLoader
 
 
 def get_grad_norm(model):
@@ -15,20 +16,33 @@ def get_grad_norm(model):
     return total_norm ** 0.5
 
 
-def init_accelerator(config, logger=None):
+def init_accelerator(model, train_config, logger=None):
     accelerator = Accelerator(
-        gradient_accumulation_steps=config.gradient_accumulation_steps,
-        mixed_precision="fp16" if config.mixed_precision else None,
+        gradient_accumulation_steps=train_config.gradient_accumulation_steps,
+        mixed_precision="fp16" if train_config.mixed_precision else None,
         log_with="wandb" if logger else None
     )
     if logger and accelerator.is_main_process:
         accelerator.init_trackers(
-            project_name=config.project_name,
-            config=asdict(config),
+            project_name=train_config.project_name,
+            config=asdict(train_config),
             init_kwargs= {"wandb": {"mode": "online",
-                                    "dir": config.output_dir,}} # W&B online mode can be changed later
+                                    "dir": train_config.output_dir,}} # W&B online mode can be changed later
             )
+        wandb.watch(model, log="all",log_freq=max(50, train_config.logging_steps))
     return accelerator
+
+def accelerate_dataset_wrapper(dataset, collate_fn=None, batch_size = None,
+                               shuffle = True, accelerator=None):
+    dataloader = dataset
+    if type(dataset) is not DataLoader:
+        dataloader = DataLoader(dataset, 
+                                collate_fn=collate_fn, 
+                                batch_size=batch_size, 
+                                shuffle=shuffle)
+    if accelerator:
+        dataloader = accelerator.prepare(dataloader)
+        return dataloader
 
 def save_model(model, accelerator = None, out_dir = "./final_model/"):
     model.eval()

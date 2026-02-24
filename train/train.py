@@ -3,11 +3,11 @@
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from .evaluations import calculate_perplexity
-import wandb
 # from dataclasses import asdict
 from time import perf_counter
 from .evalute import eval_loop
-from .utils import save_model
+from .utils import save_model, init_accelerator, accelerate_dataset_wrapper
+from .build_optimizer import build_muon_optimizer, create_scheduler
 
 def get_grad_norm(model):
     total_norm = 0.0
@@ -18,19 +18,7 @@ def get_grad_norm(model):
     total_norm = total_norm**0.5
     return total_norm
 
-
-
-def train(
-        model,
-        optimizer,
-        lr_scheduler,
-        accelerator,
-        train_config,
-        train_dataset=None,
-        eval_dataset=None,
-        data_collator=None,
-        logger: bool | None = None,
-):
+def init_train_config_vars(train_config, train_dataset, eval_dataset = None):
     if train_config.num_epochs is None:
         train_config.num_epochs = 1
     if train_config.gradient_accumulation_steps is None:
@@ -38,44 +26,49 @@ def train(
 
     steps_per_epoch = len(train_dataset) // (train_config.train_batch_size * train_config.gradient_accumulation_steps)
     train_config.num_train_steps = steps_per_epoch * train_config.num_epochs
+    train_config.steps_per_epoch = steps_per_epoch 
 
-    # Accelerator initialization
-    # accelerator = Accelerator(
-    #     gradient_accumulation_steps=train_config.gradient_accumulation_steps,
-    #     mixed_precision="fp16" if train_config.mixed_precision else None,
-    #     log_with="wandb" if logger else None
-    # )
+    if eval_dataset:
+        train_config.num_eval_steps = len(eval_dataset) // train_config.eval_batch_size
+
+
+def prepare_datasets(train_dataset, eval_dataset = None, collate_fn = None, 
+                     train_config = None):
+    train_loader = accelerate_dataset_wrapper(train_dataset, collate_fn=collate_fn, 
+                                              batch_size=train_config.train_batch_size)
+
+    eval_loader = None
+    if eval_dataset:
+        eval_loader = accelerate_dataset_wrapper(eval_dataset, collate_fn=collate_fn,
+                                                 batch_size=train_config.eval_batch_size)
+    return train_loader, eval_loader    
+
+def train(
+        model,
+        train_config,
+        optimizer = None,
+        lr_scheduler = None,
+        accelerator = None,
+        train_dataset=None,
+        eval_dataset=None,
+        data_collator=None,
+        logger: bool | None = None,
+):
+    init_train_config_vars(train_config, train_dataset, eval_dataset)
+
+    if not accelerator:
+        accelerator = init_accelerator(model, train_config, logger)
+
+    if not optimizer:
+        optimizer = build_muon_optimizer(model, train_config)
     
-    if logger and accelerator.is_main_process:
-    #     accelerator.init_trackers(
-    #         project_name=train_config.project_name,
-    #         config=asdict(train_config),
-    #         init_kwargs= {"wandb": {"mode": "online",
-    #                                 "dir": train_config.output_dir,}} # W&B online mode can be changed later
-    #         )
-        wandb.watch(model, log="all",log_freq=max(50, train_config.logging_steps))
-
-    # optimizer = build_muon_optimizer(model, train_config)
-    # lr_scheduler = create_scheduler(train_config.num_train_steps, optimizer)
+    if not lr_scheduler:
+        lr_scheduler = create_scheduler(train_config.num_train_steps, optimizer)
 
     # model, optimizer, lr_scheduler = accelerator.prepare(model, optimizer, lr_scheduler)
-
-    if type(train_dataset) is not DataLoader:
-        train_loader = accelerator.prepare(
-            DataLoader(train_dataset, collate_fn=data_collator, batch_size=train_config.train_batch_size, shuffle=True)
-        )
-    else:
-        train_loader = accelerator.prepare(train_dataset)
-    eval_loader = None
-    if eval_dataset is not None:
-        train_config.num_eval_steps = len(eval_dataset) // train_config.eval_batch_size
-        if type(eval_dataset) is not DataLoader:
-            eval_loader = accelerator.prepare(
-                DataLoader(eval_dataset, collate_fn=data_collator, batch_size=train_config.eval_batch_size)
-            )
-        else:
-            eval_loader = accelerator.prepare(eval_dataset)
-
+    train_loader, eval_loader = prepare_datasets(train_dataset, eval_dataset, collate_fn=data_collator,
+                     train_config = train_config)
+   
     overall_train_start_time = perf_counter()
     global_step = 0
 
@@ -84,7 +77,7 @@ def train(
     for epoch in range(train_config.num_epochs):
         
         # Initialize tqdm for global steps
-        loop = tqdm(total=steps_per_epoch, desc=f"Epoch {epoch + 1}", position=0, leave=True)
+        loop = tqdm(total=train_config.steps_per_epoch, desc=f"Epoch {epoch + 1}", position=0, leave=True)
         # Initialize metrics to track
         logger_start_time = perf_counter()
         train_loss = 0

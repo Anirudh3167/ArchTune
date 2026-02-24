@@ -82,6 +82,10 @@ class GemmaHyperparameters:
     logging_steps=50#500
     save_steps=1_000
     batch_size: int = 28 #32 #32 #64 #16                 # micro-batch size per gradient step
+
+    embedding_type: str = "hash"
+    bucket_size: int = 8096 
+    num_hash_functions: int = 4
     
     def to_dict(self):
         return asdict(self)
