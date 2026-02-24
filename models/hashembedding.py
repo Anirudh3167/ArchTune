@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-class HashEmbeddingLayer(nn.Module):
+class CustHashEmbeddingLayer(nn.Module):
     def __init__(self, vocab_size, hidden_dim, bucket_size, num_hash_functions):
         super().__init__()
         self.vocab_size = vocab_size
@@ -30,29 +30,24 @@ class HashEmbeddingLayer(nn.Module):
 
     def forward(self, input_ids):
         # Ensure input is long and get device
-        input_ids = input_ids.long()
-        device = input_ids.device
+        input_ids = input_ids.to(self.weight.device).long()
 
         # Expand for multiple hashes
         ids = input_ids.unsqueeze(-1)  # (B, T, 1)
 
-        # Move buffers to input device dynamically (safe even with .to("cuda"))
-        hash_a = self.hash_a.to(device)
-        hash_b = self.hash_b.to(device)
-        sign_a = self.sign_a.to(device)
-        sign_b = self.sign_b.to(device)
 
         # Compute bucket indices
-        buckets = (ids * hash_a + hash_b) % self.bucket_size  # (B, T, num_hash_functions)
+        buckets = (ids * self.hash_a + self.hash_b) % self.bucket_size  # (B, T, num_hash_functions)
 
         # Compute sign (+1/-1)
-        signs = ((ids * sign_a + sign_b) % 2) * 2 - 1
-        signs = signs.float().to(device)  # ensure same device
+        signs = ((ids * self.sign_a + self.sign_b) % 2) * 2 - 1
+        signs = signs.float()  # ensure same device
 
         # Lookup embeddings (weight must be on same device)
         embedded = self.weight[buckets]  # (B, T, num_hash_functions, hidden_dim)
 
         # Apply sign
+        print(embedded.device, signs.device)
         embedded = embedded * signs.unsqueeze(-1)
 
         # Average across hash functions
