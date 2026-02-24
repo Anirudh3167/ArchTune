@@ -42,7 +42,7 @@ def accelerate_dataset_wrapper(dataset, collate_fn=None, batch_size = None,
                                 shuffle=shuffle)
     if accelerator:
         dataloader = accelerator.prepare(dataloader)
-        return dataloader
+    return dataloader
 
 def save_model(model, accelerator = None, out_dir = "./final_model/"):
     model.eval()
