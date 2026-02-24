@@ -33,6 +33,8 @@ class HashEmbeddingLayer(nn.Module):
         )
 
     def forward(self, input_ids):
+        device = input_ids.device
+
         # input_ids: (B, T)
         B, T = input_ids.shape
         input_ids = input_ids.long()
@@ -40,6 +42,12 @@ class HashEmbeddingLayer(nn.Module):
         # Expand for multiple hashes
         # shape: (B, T, H)
         ids = input_ids.unsqueeze(-1)
+
+        hash_a = self.hash_a.to(device)
+        hash_b = self.hash_b.to(device)
+        sign_a = self.sign_a.to(device)
+        sign_b = self.sign_b.to(device)
+
 
         # Compute hash bucket indices
         buckets = (ids * self.hash_a + self.hash_b) % self.bucket_size
