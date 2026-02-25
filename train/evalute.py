@@ -19,7 +19,7 @@ def eval_loop(model, test_datalodaer, train_config):
             outputs = model(**eval_batch)
             loss = outputs["loss"]
             logits = outputs["logits"]
-            labels = eval_batch["labels"]
+            labels = eval_batch["labels"].to(model.device)
 
             eval_loss += loss.item()
             preds = logits.argmax(dim=-1)

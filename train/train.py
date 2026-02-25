@@ -87,8 +87,8 @@ def train(
                     outputs = model(**batch)
                     loss = outputs["loss"]
                     logits = outputs["logits"]
-                    labels = batch["labels"]
-                    accuracy = logits.argmax(dim=-1).view(-1).eq(labels.to(model.device).view(-1)).float().mean()
+                    labels = batch["labels"].to(model.device)
+                    accuracy = logits.argmax(dim=-1).view(-1).eq(labels.view(-1)).float().mean()
 
                 train_loss += loss.item()
                 train_acc += accuracy.item()
