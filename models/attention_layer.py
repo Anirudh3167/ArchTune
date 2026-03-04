@@ -108,12 +108,12 @@ class GroupedQueryAttention(nn.Module):
 
         # Attention
         attn_scores = queries @ keys.transpose(2, 3)
-        print("Attn Scores Shape: ", attn_scores.shape)
-        print("Attn Mask Shape: ", mask.shape)
+        # print("Attn Scores Shape: ", attn_scores.shape)
+        # print("Attn Mask Shape: ", mask.shape)
         attn_scores = attn_scores.masked_fill(mask, -torch.inf)
         attn_weights = torch.softmax(attn_scores, dim=-1)
 
-        print("Context Shape: ", (attn_weights @ values).shape)
-        print("Context Transpose Shape: ", (attn_weights @ values).transpose(1, 2).shape)
+        # print("Context Shape: ", (attn_weights @ values).shape)
+        # print("Context Transpose Shape: ", (attn_weights @ values).transpose(1, 2).shape)
         context = (attn_weights @ values).transpose(1, 2).reshape(b, num_tokens, self.d_out)
         return self.out_proj(context)

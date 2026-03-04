@@ -161,8 +161,8 @@ class Gemma3Model(nn.Module):
             dataset_mask_hidden = ~attention_mask.to(torch.bool)
             
             # Broadcast and merge using logical OR
-            mask_global = mask_global | dataset_mask_hidden.unsqueeze(1).unsqueeze(1)
-            mask_local = mask_local | dataset_mask_hidden.unsqueeze(1).unsqueeze(1)
+            mask_global = mask_global | dataset_mask_hidden.unsqueeze(1)
+            mask_local = mask_local | dataset_mask_hidden.unsqueeze(1)
 
         for block in self.blocks:
             x = block(
