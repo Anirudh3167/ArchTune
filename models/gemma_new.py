@@ -144,7 +144,14 @@ class Gemma3Model(nn.Module):
     def forward(self, input_ids, attention_mask=None, labels=None): #, **kwargs):
         b, seq_len = input_ids.shape
         x = self.tok_embedding(input_ids) * (self.config.n_embed ** 0.5)
-        mask_global, mask_local = self._create_masks(seq_len, x.device)
+        # mask_global, mask_local = self._create_masks(seq_len, x.device)
+        # Get the 2D geometric masks (Seq, Seq)
+        mask_global_2d, mask_local_2d = self._create_masks(seq_len, x.device)
+        
+        # --- THE FIX: Convert 2D -> 4D ---
+        # Shape: (1, 1, Seq, Seq)
+        mask_global = mask_global_2d.unsqueeze(0).unsqueeze(0)
+        mask_local = mask_local_2d.unsqueeze(0).unsqueeze(0)
 
         # 2. Combine with dataset mask if it exists
         # Dataset mask should be (Batch, Seq_Len) or (Batch, 1, 1, Seq_Len)
