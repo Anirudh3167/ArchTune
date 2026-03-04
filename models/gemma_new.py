@@ -63,9 +63,8 @@ class TransformerBlock(nn.Module):
         return x
 
 class Gemma3Model(nn.Module):
-    def __init__(self, config,tokenizer):
+    def __init__(self, config):
         super().__init__()
-        self.tokenizer = tokenizer
         assert config.layer_types is not None and len(config.layer_types) == config.n_layer
 
         # Main model parameters
@@ -178,88 +177,3 @@ class Gemma3Model(nn.Module):
 
     @property
     def device(self):   return next(self.parameters()).device
-
-    @torch.no_grad()
-    def generate(
-        self,
-        x: str,
-        num_tokens: int = 100,
-        test_seq_len: int = 384,
-        temperature: float = 1.0,
-        top_k: int = 50,
-        top_p: float = 0.95,
-        repetition_penalty: float = 1.1,
-        strategy: str = "sampling"  # "sampling" or "beam"
-    ):
-        """
-        Robust generation:
-          - sampling with top-k/top-p + repetition penalty (recommended)
-          - or a very small beam search (beam=2)
-        """
-        self.eval()
-        # encode -> 1D tensor (seq_len,)
-        tokens = self.tokenizer.encode(x, add_special_tokens=False, return_tensors="pt").to(self.device)[0].long()
-    
-        if strategy == "beam":
-            # Very simple beam=2 implementation (deterministic-ish, often repetitive)
-            beams = [(tokens, 0.0)]  # (tokens_tensor, log_prob_score)
-            for _ in tqdm(range(num_tokens), desc="Generating (beam):", leave=False):
-                new_beams = []
-                for toks, score in beams:
-                    out = self(toks[-test_seq_len:].unsqueeze(0))["logits"][0, -1]  # logits (vocab,)
-                    log_probs = F.log_softmax(out / max(temperature, 1e-8), dim=-1)
-                    top_logvals, top_indices = torch.topk(log_probs, 2)  # beam=2 expansions per beam
-                    for lv, idx in zip(top_logvals, top_indices):
-                        new_tok = torch.cat((toks, idx.view(1).to(toks.device)))
-                        new_beams.append((new_tok, score + float(lv)))
-                # keep top 2 beams
-                beams = sorted(new_beams, key=lambda b: b[1], reverse=True)[:2]
-            out_tokens = beams[0][0]
-            return self.tokenizer.decode(out_tokens.tolist())
-    
-        # --- sampling branch ---
-        for _ in tqdm(range(num_tokens), desc="Generating (sampling):", leave=False):
-            out = self(tokens[-self.config.seq_len:].unsqueeze(0))["logits"][0, -1]  # logits (vocab,)
-    
-            # --- repetition penalty (HuggingFace style) ---
-            if repetition_penalty != 1.0:
-                # operate in-place on a cloned tensor to be safe
-                logits = out.clone()
-                prev_tokens = set(tokens.tolist())
-                for tid in prev_tokens:
-                    # If score < 0: multiply by penalty, else divide by penalty
-                    if logits[tid] < 0:
-                        logits[tid] *= repetition_penalty
-                    else:
-                        logits[tid] /= repetition_penalty
-            else:
-                logits = out.clone()
-    
-            # --- apply temperature and filtering on logits ---
-            # Protect against extreme zero temperature
-            temp = max(temperature, 1e-8)
-            logits = logits / temp
-    
-            # Filter logits using top-k / top-p (works on logits)
-            filtered_logits = top_k_top_p_filtering(logits, top_k=top_k, top_p=top_p)
-    
-            # Numerical safety: if all values are -inf (can happen in pathological cases), fall back
-            if not torch.isfinite(filtered_logits).any():
-                filtered_logits = logits.clone()
-    
-            probs = F.softmax(filtered_logits, dim=-1)
-    
-            # Safety guard: if probs is invalid or sums to zero, fallback to stable softmax
-            if (not torch.isfinite(probs).all()) or probs.sum() <= 0:
-                probs = F.softmax(logits, dim=-1)
-    
-            # final draw
-            try:
-                tkn = torch.multinomial(probs, num_samples=1).to(tokens.device)
-            except RuntimeError:
-                # Last-ditch fallback: pick argmax (greedy)
-                tkn = torch.tensor([int(torch.argmax(probs))], device=tokens.device)
-    
-            tokens = torch.cat((tokens, tkn.view(-1).long()))
-    
-        return self.tokenizer.decode(tokens.tolist())
