@@ -113,10 +113,6 @@ class GroupedQueryAttention(nn.Module):
         attn_scores = attn_scores.masked_fill(mask, -torch.inf)
         attn_weights = torch.softmax(attn_scores, dim=-1)
 
-        # attn_weights = torch.softmax(attn_scores, dim=-1)
-        print("Nan in attn_weights:", torch.isnan(attn_weights).any().item())
-        print("Nan count:", torch.isnan(attn_weights).sum().item())
-
         # print("Context Shape: ", (attn_weights @ values).shape)
         # print("Context Transpose Shape: ", (attn_weights @ values).transpose(1, 2).shape)
         context = (attn_weights @ values).transpose(1, 2).reshape(b, num_tokens, self.d_out)
