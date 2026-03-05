@@ -146,16 +146,16 @@ class Gemma3Model(nn.Module):
         x = self.tok_embedding(input_ids) * (self.config.n_embed ** 0.5)
         # mask_global, mask_local = self._create_masks(seq_len, x.device)
         # Get the 2D geometric masks (Seq, Seq)
-        mask_global_2d, mask_local_2d = self._create_masks(seq_len, x.device)
+        mask_global, mask_local = self._create_masks(seq_len, x.device)
         
-        # --- THE FIX: Convert 2D -> 4D ---
-        # Shape: (1, 1, Seq, Seq)
-        mask_global = mask_global_2d.unsqueeze(0).unsqueeze(0)
-        mask_local = mask_local_2d.unsqueeze(0).unsqueeze(0)
 
         # 2. Combine with dataset mask if it exists
         # Dataset mask should be (Batch, Seq_Len) or (Batch, 1, 1, Seq_Len)
         if attention_mask is not None:
+            # --- THE FIX: Convert 2D -> 4D ---
+            # Shape: (1, 1, Seq, Seq)
+            mask_global = mask_global.unsqueeze(0).unsqueeze(0)
+            mask_local = mask_local.unsqueeze(0).unsqueeze(0)
             # We invert the dataset mask if 1=visible (standard) to 1=hidden
             # If your dataset already gives 1=hidden, skip the '~'
             dataset_mask_hidden = ~attention_mask.to(torch.bool)
