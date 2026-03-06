@@ -116,10 +116,10 @@ class GroupedQueryAttention(nn.Module):
         check_precision(attn_scores, "Attention Scores (Pre-Softmax)")
         attn_scores = attn_scores.masked_fill(mask, -torch.inf)
         attn_weights = torch.softmax(attn_scores, dim=-1, dtype=torch.float32).to(queries.dtype)
-        check_precision(attn_scores, "Attention Scores (Post-Softmax)")
+        check_precision(attn_weights, "Attention Scores (Post-Softmax)")
 
         # print("Context Shape: ", (attn_weights @ values).shape)
         # print("Context Transpose Shape: ", (attn_weights @ values).transpose(1, 2).shape)
         context = (attn_weights @ values).transpose(1, 2).reshape(b, num_tokens, self.d_out)
-        check_precision(attn_scores, "Attention Scores (Post-Context)")
+        check_precision(context, "Attention Scores (Post-Context)")
         return self.out_proj(context)
