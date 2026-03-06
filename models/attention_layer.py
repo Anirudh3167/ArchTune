@@ -111,6 +111,9 @@ class GroupedQueryAttention(nn.Module):
 
         # Attention
         attn_scores = queries @ keys.transpose(2, 3)
+        # 3. SOFT-CAPPING (Gemma 2/3 style)
+        # This forces values into a stable range (-50 to +50) before they can hit 65k
+        attn_scores = 50.0 * torch.tanh(attn_scores / 50.0)
         # print("Attn Scores Shape: ", attn_scores.shape)
         # print("Attn Mask Shape: ", mask.shape)
         check_precision(attn_scores, "Attention Scores (Pre-Softmax)")
