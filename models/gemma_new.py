@@ -96,6 +96,8 @@ class Gemma3Model(nn.Module):
         self.register_buffer("cos_global", cos_global, persistent=False)
         self.register_buffer("sin_global", sin_global, persistent=False)
 
+        self.mask_global, self.mask_local = self._create_masks(config.seq_len, self.device)
+
     def _create_masks(self, seq_len, device):
         ones = torch.ones((seq_len, seq_len), dtype=torch.bool, device=device)
 
@@ -146,8 +148,7 @@ class Gemma3Model(nn.Module):
         x = self.tok_embedding(input_ids) * (self.config.n_embed ** 0.5)
         # mask_global, mask_local = self._create_masks(seq_len, x.device)
         # Get the 2D geometric masks (Seq, Seq)
-        mask_global, mask_local = self._create_masks(seq_len, x.device)
-        
+        mask_global, mask_local = self.mask_global.to(x.device), self.mask_local.to(x.device)   
 
         # 2. Combine with dataset mask if it exists
         # Dataset mask should be (Batch, Seq_Len) or (Batch, 1, 1, Seq_Len)

@@ -90,22 +90,14 @@ class GroupedQueryAttention(nn.Module):
         values = values.view(b, num_tokens, self.num_kv_groups, self.head_dim).transpose(1, 2)
 
         # # Optional normalization
-        # if self.q_norm:
-        #     queries = self.q_norm(queries)
-        # if self.k_norm:
-        #     keys = self.k_norm(keys)
-
-        # # Apply RoPE
-        # queries = apply_rope(queries, cos, sin)
-        # keys = apply_rope(keys, cos, sin)
-
-        queries = apply_rope(queries, cos, sin)   # RoPE first
-        keys = apply_rope(keys, cos, sin)
-
-        if self.q_norm:                           # norm after RoPE
+        if self.q_norm:
             queries = self.q_norm(queries)
         if self.k_norm:
             keys = self.k_norm(keys)
+
+        # Apply RoPE
+        queries = apply_rope(queries, cos, sin)
+        keys = apply_rope(keys, cos, sin)
 
         # Expand K and V to match number of heads
         keys = keys.repeat_interleave(self.group_size, dim=1)
