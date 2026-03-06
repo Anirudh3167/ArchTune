@@ -133,3 +133,14 @@ def apply_rope(x, cos, sin):
 
     # It's ok to use lower-precision after applying cos and sin rotation
     return x_rotated
+
+
+def check_precision(tensor, name="tensor"):
+    if torch.isnan(tensor).any() or torch.isinf(tensor).any():
+        # Get stats to help debug
+        max_val = tensor.max().item()
+        min_val = tensor.min().item()
+        raise FloatingPointError(
+            f"Precision Break at {name}: Max={max_val}, Min={min_val}. "
+            f"Contains NaN: {torch.isnan(tensor).any()}"
+        )

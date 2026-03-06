@@ -1,5 +1,5 @@
 import torch, torch.nn as nn, torch.nn.functional as F
-from .utils import Rotary, norm, RMSNorm, apply_rope
+from .utils import Rotary, norm, RMSNorm, apply_rope, check_precision
 import torch.nn.functional as F
 
 class CausalSelfAttention(nn.Module):
@@ -113,10 +113,13 @@ class GroupedQueryAttention(nn.Module):
         attn_scores = queries @ keys.transpose(2, 3)
         # print("Attn Scores Shape: ", attn_scores.shape)
         # print("Attn Mask Shape: ", mask.shape)
+        check_precision(attn_scores, "Attention Scores (Pre-Softmax)")
         attn_scores = attn_scores.masked_fill(mask, -torch.inf)
         attn_weights = torch.softmax(attn_scores, dim=-1, dtype=torch.float32).to(queries.dtype)
+        check_precision(attn_scores, "Attention Scores (Post-Softmax)")
 
         # print("Context Shape: ", (attn_weights @ values).shape)
         # print("Context Transpose Shape: ", (attn_weights @ values).transpose(1, 2).shape)
         context = (attn_weights @ values).transpose(1, 2).reshape(b, num_tokens, self.d_out)
+        check_precision(attn_scores, "Attention Scores (Post-Context)")
         return self.out_proj(context)

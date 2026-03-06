@@ -1,6 +1,6 @@
 import torch, torch.nn as nn, torch.nn.functional as F
 from tqdm.notebook import tqdm
-from .utils import top_k_top_p_filtering, RMSNorm, compute_rope_params
+from .utils import top_k_top_p_filtering, RMSNorm, compute_rope_params, check_precision
 from .feedforward import FeedForward, SparseMoE
 from .attention_layer import GroupedQueryAttention
 from .hashembedding import HashEmbeddingLayer
@@ -58,6 +58,7 @@ class TransformerBlock(nn.Module):
         x_attn = self.att(x, attn_mask, cos, sin)
         x_attn = self.post_attention_layernorm(x_attn)
         x = shortcut + x_attn
+        check_precision(x, f"Residual Stream after Layer {self.attn_type}")
 
         # Shortcut connection for feed forward block
         shortcut = x
