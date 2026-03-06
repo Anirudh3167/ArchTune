@@ -65,8 +65,11 @@ class GroupedQueryAttention(nn.Module):
         self.out_proj = nn.Linear(self.d_out, d_in, bias=False)
 
         if qk_norm:
-            self.q_norm = RMSNorm(head_dim, eps=1e-6)
-            self.k_norm = RMSNorm(head_dim, eps=1e-6)
+            # self.q_norm = RMSNorm(head_dim, eps=1e-6)
+            # self.k_norm = RMSNorm(head_dim, eps=1e-6)
+            # Reducing the eps for prevent nan in the loss
+            self.q_norm = RMSNorm(head_dim, eps=1e-4)
+            self.k_norm = RMSNorm(head_dim, eps=1e-4)
         else:
             self.q_norm = self.k_norm = None
 
