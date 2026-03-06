@@ -46,6 +46,8 @@ class RMSNorm(nn.Module):
 
     def forward(self, x):
         # Match HF Gemma3: compute norm in float32, then scale by (1 + w)
+        orig_dtype = x.dtype
+        x = x.float()              
         var = x.pow(2).mean(dim=-1, keepdim=True)
         x_norm = x * torch.rsqrt(var + self.eps)
         out = x_norm * (1.0 + self.scale)
@@ -53,7 +55,7 @@ class RMSNorm(nn.Module):
         if self.shift is not None:
             out = out + self.shift
 
-        return out
+        return out.to(orig_dtype)
 
 class LayerNorm(nn.Module):
     """ LayerNorm but with an optional bias. PyTorch doesn't support simply bias=False """

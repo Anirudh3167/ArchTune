@@ -89,15 +89,23 @@ class GroupedQueryAttention(nn.Module):
         keys = keys.view(b, num_tokens, self.num_kv_groups, self.head_dim).transpose(1, 2)
         values = values.view(b, num_tokens, self.num_kv_groups, self.head_dim).transpose(1, 2)
 
-        # Optional normalization
-        if self.q_norm:
+        # # Optional normalization
+        # if self.q_norm:
+        #     queries = self.q_norm(queries)
+        # if self.k_norm:
+        #     keys = self.k_norm(keys)
+
+        # # Apply RoPE
+        # queries = apply_rope(queries, cos, sin)
+        # keys = apply_rope(keys, cos, sin)
+
+        queries = apply_rope(queries, cos, sin)   # RoPE first
+        keys = apply_rope(keys, cos, sin)
+
+        if self.q_norm:                           # norm after RoPE
             queries = self.q_norm(queries)
         if self.k_norm:
             keys = self.k_norm(keys)
-
-        # Apply RoPE
-        queries = apply_rope(queries, cos, sin)
-        keys = apply_rope(keys, cos, sin)
 
         # Expand K and V to match number of heads
         keys = keys.repeat_interleave(self.group_size, dim=1)
@@ -111,7 +119,7 @@ class GroupedQueryAttention(nn.Module):
         # print("Attn Scores Shape: ", attn_scores.shape)
         # print("Attn Mask Shape: ", mask.shape)
         attn_scores = attn_scores.masked_fill(mask, -torch.inf)
-        attn_weights = torch.softmax(attn_scores, dim=-1)
+        attn_weights = torch.softmax(attn_scores, dim=-1, dtype=torch.float32).to(queries.dtype)
 
         # print("Context Shape: ", (attn_weights @ values).shape)
         # print("Context Transpose Shape: ", (attn_weights @ values).transpose(1, 2).shape)
