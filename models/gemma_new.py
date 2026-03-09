@@ -69,9 +69,13 @@ class TransformerBlock(nn.Module):
         # Shortcut connection for feed forward block
         shortcut = x
         x_ffn = self.pre_feedforward_layernorm(x)
+        check_precision(x_ffn, f"Output of pre feedforward layernorm layer")
         x_ffn = self.ff(x_ffn)
+        check_precision(x_ffn, f"Post feedforward layer")
         x_ffn = self.post_feedforward_layernorm(x_ffn)
+        check_precision(x_ffn, f"Post feedforward layernorm layer")
         x = shortcut + x_ffn
+        check_precision(x, f"Residual Stream after Feedforward layer")
         return x
 
 class Gemma3Model(nn.Module):
