@@ -203,11 +203,11 @@ class GroupedQueryAttention(nn.Module):
         k = apply_rope(k.float(), cos, sin).to(x.dtype)
 
         # expand KV heads (GQA)
-        k = k.repeat_interleave(self.group_size, dim=1)
-        v = v.repeat_interleave(self.group_size, dim=1)
+        # k = k.repeat_interleave(self.group_size, dim=1)
+        # v = v.repeat_interleave(self.group_size, dim=1)
 
         # Scale queries
-        q = q * self.scaling
+        # q = q * self.scaling
 
         # FlashAttention via SDPA
         context = F.scaled_dot_product_attention(
@@ -216,6 +216,7 @@ class GroupedQueryAttention(nn.Module):
             v,
             attn_mask=mask,
             dropout_p=0.0,
+            scale=self.scaling,
             is_causal=False
         )
 
