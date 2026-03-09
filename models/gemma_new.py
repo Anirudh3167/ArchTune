@@ -97,10 +97,10 @@ class Gemma3Model(nn.Module):
             theta_base=config.rope_base,
             context_length=config.seq_len
         )
-        self.register_buffer("cos_local", cos_local, persistent=False)
-        self.register_buffer("sin_local", sin_local, persistent=False)
-        self.register_buffer("cos_global", cos_global, persistent=False)
-        self.register_buffer("sin_global", sin_global, persistent=False)
+        self.register_buffer("cos_local", cos_local.float(), persistent=False)
+        self.register_buffer("sin_local", sin_local.float(), persistent=False)
+        self.register_buffer("cos_global", cos_global.float(), persistent=False)
+        self.register_buffer("sin_global", sin_global.float(), persistent=False)
 
         self.mask_global, self.mask_local = self._create_masks(config.seq_len, self.device)
 
