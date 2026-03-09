@@ -180,6 +180,8 @@ class Gemma3Model(nn.Module):
             # Merge: (1, 1, t, t) | (B, 1, t, t) -> (B, 1, t, t)
             mask_global = mask_global | dataset_mask_hidden.unsqueeze(1)
             mask_local = mask_local | dataset_mask_hidden.unsqueeze(1)
+        mask_local = ~mask_local
+        mask_global = ~mask_global
         # b, seq_len = input_ids.shape
         # x = self.tok_embedding(input_ids) * (self.config.n_embed ** 0.5)
         # # mask_global, mask_local = self._create_masks(seq_len, x.device)
