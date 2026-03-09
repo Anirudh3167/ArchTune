@@ -92,11 +92,20 @@ class GroupedQueryAttention(nn.Module):
         keys = keys.view(b, num_tokens, self.num_kv_groups, self.head_dim).transpose(1, 2)
         values = values.view(b, num_tokens, self.num_kv_groups, self.head_dim).transpose(1, 2)
 
+        check_precision(queries, "Queries (Post-Projections)")
+        check_precision(keys, "Keys (Post-Projections)")
+        check_precision(values, "Values (Post-Projections)")
+
         # # Optional normalization
+        # if self.q_norm:
+        #     queries = self.q_norm(queries)
+        # if self.k_norm:
+        #     keys = self.k_norm(keys)
         if self.q_norm:
-            queries = self.q_norm(queries)
+            queries = self.q_norm(queries.float()).to(x.dtype)
+
         if self.k_norm:
-            keys = self.k_norm(keys)
+            keys = self.k_norm(keys.float()).to(x.dtype)
 
         # Apply RoPE
         queries = apply_rope(queries.float(), cos, sin)
@@ -105,6 +114,10 @@ class GroupedQueryAttention(nn.Module):
         # Expand K and V to match number of heads
         keys = keys.repeat_interleave(self.group_size, dim=1)
         values = values.repeat_interleave(self.group_size, dim=1)
+        check_precision(queries, "Queries (Pre-Attention)")
+        
+        check_precision(keys, "Keys (Pre-Attention)")
+        check_precision(values, "Values (Pre-Attention)")
 
         # Scale queries
         queries = queries * self.scaling
