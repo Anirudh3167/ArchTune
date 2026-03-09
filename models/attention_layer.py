@@ -99,8 +99,8 @@ class GroupedQueryAttention(nn.Module):
             keys = self.k_norm(keys)
 
         # Apply RoPE
-        queries = apply_rope(queries, cos, sin)
-        keys = apply_rope(keys, cos, sin)
+        queries = apply_rope(queries, cos, sin).float()
+        keys = apply_rope(keys, cos, sin).float()
 
         # Expand K and V to match number of heads
         keys = keys.repeat_interleave(self.group_size, dim=1)
@@ -110,19 +110,17 @@ class GroupedQueryAttention(nn.Module):
         queries = queries * self.scaling
 
         # Attention
-        attn_scores = queries @ keys.transpose(2, 3)
-        # 3. SOFT-CAPPING (Gemma 2/3 style)
-        # This forces values into a stable range (-50 to +50) before they can hit 65k
-        attn_scores = 50.0 * torch.tanh(attn_scores / 50.0)
+        attn_scores = torch.matmul(queries.float(),keys.transpose(2, 3).float())
         # print("Attn Scores Shape: ", attn_scores.shape)
         # print("Attn Mask Shape: ", mask.shape)
         check_precision(attn_scores, "Attention Scores (Pre-Softmax)")
-        attn_scores = attn_scores.masked_fill(mask, -torch.inf)
+        attn_scores = attn_scores.masked_fill(mask, -1e4) # -torch.inf) causes nan issues in mixed precision
         attn_weights = torch.softmax(attn_scores, dim=-1, dtype=torch.float32).to(queries.dtype)
         check_precision(attn_weights, "Attention Scores (Post-Softmax)")
 
         # print("Context Shape: ", (attn_weights @ values).shape)
         # print("Context Transpose Shape: ", (attn_weights @ values).transpose(1, 2).shape)
-        context = (attn_weights @ values).transpose(1, 2).reshape(b, num_tokens, self.d_out)
+        # context = (attn_weights @ values).transpose(1, 2).reshape(b, num_tokens, self.d_out)
+        context = torch.matmul(attn_weights,values.float()).to(values.dtype).transpose(1, 2).reshape(b, num_tokens, self.d_out)
         check_precision(context, "Attention Scores (Post-Context)")
         return self.out_proj(context)
