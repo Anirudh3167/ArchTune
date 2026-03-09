@@ -99,8 +99,8 @@ class GroupedQueryAttention(nn.Module):
             keys = self.k_norm(keys)
 
         # Apply RoPE
-        queries = apply_rope(queries, cos, sin).float()
-        keys = apply_rope(keys, cos, sin).float()
+        queries = apply_rope(queries.float(), cos, sin).to(x.dtype)
+        keys = apply_rope(keys.float(), cos, sin).to(x.dtype)
 
         # Expand K and V to match number of heads
         keys = keys.repeat_interleave(self.group_size, dim=1)
