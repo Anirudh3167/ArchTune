@@ -14,6 +14,18 @@ class MLP(nn.Module):
         x = F.relu(x).square()
         return self.dropout(self.c_proj(x))
 
+# class FeedForward(nn.Module):
+#     def __init__(self, config):
+#         super().__init__()
+#         self.fc1 = nn.Linear(config.n_embed, config.hidden_dim, bias=False)
+#         self.fc2 = nn.Linear(config.n_embed, config.hidden_dim, bias=False)
+#         self.fc3 = nn.Linear(config.hidden_dim, config.n_embed, bias=False)
+
+#     def forward(self, x):
+#         x_fc1 = self.fc1(x)
+#         x_fc2 = self.fc2(x)
+#         x = nn.functional.gelu(x_fc1, approximate="tanh") * x_fc2
+#         return self.fc3(x)
 class FeedForward(nn.Module):
     def __init__(self, config):
         super().__init__()
@@ -22,11 +34,11 @@ class FeedForward(nn.Module):
         self.fc3 = nn.Linear(config.hidden_dim, config.n_embed, bias=False)
 
     def forward(self, x):
-        x_fc1 = self.fc1(x)
-        x_fc2 = self.fc2(x)
-        x = nn.functional.gelu(x_fc1, approximate="tanh") * x_fc2
-        return self.fc3(x)
+        x1 = self.fc1(x)
+        x2 = self.fc2(x)
 
+        x = torch.nn.functional.gelu(x1.float(), approximate="tanh").to(x1.dtype) * x2
+        return self.fc3(x)
 
 class Expert(nn.Module):
     def __init__(self,config):

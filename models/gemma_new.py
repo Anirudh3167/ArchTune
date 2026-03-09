@@ -44,7 +44,11 @@ class TransformerBlock(nn.Module):
     ):
         # Shortcut connection for attention block
         shortcut = x
+        
+        check_precision(x, f"Input layer")
         x = self.input_layernorm(x)
+        
+        check_precision(x, f"Input Layernorm layer")
 
         if self.attn_type == "sliding_attention":
             attn_mask = mask_local
@@ -56,7 +60,9 @@ class TransformerBlock(nn.Module):
             sin = sin_global
 
         x_attn = self.att(x, attn_mask, cos, sin)
+        check_precision(x_attn, f"Post Attn layer")
         x_attn = self.post_attention_layernorm(x_attn)
+        check_precision(x_attn, f"Post Attn layernorm layer")
         x = shortcut + x_attn
         check_precision(x, f"Residual Stream after Layer {self.attn_type}")
 
@@ -186,7 +192,7 @@ class Gemma3Model(nn.Module):
         logits = self.lm_head(x)
         loss = None
         if labels is not None:
-            loss = F.cross_entropy(logits.reshape(-1, logits.size(-1)), labels.to(self.device).reshape(-1))
+            loss = F.cross_entropy(logits.float().reshape(-1, logits.size(-1)), labels.to(self.device).reshape(-1))
         return {"logits":logits, "loss":loss}
 
     @property

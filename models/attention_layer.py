@@ -82,6 +82,8 @@ class GroupedQueryAttention(nn.Module):
     def forward(self, x, mask, cos, sin):
         b, num_tokens, _ = x.shape
 
+        check_precision(x, "Input to Attention")
+        
         # Apply projections
         queries = self.W_query(x)  # (b, num_tokens, num_heads * head_dim)
         keys = self.W_key(x)       # (b, num_tokens, num_kv_groups * head_dim)
