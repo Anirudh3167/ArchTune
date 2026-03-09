@@ -88,7 +88,8 @@ class Gemma3Model(nn.Module):
             TransformerBlock(config, attn_type, ff_layer_type)for attn_type,ff_layer_type in zip(config.layer_types, config.ff_layers)
         ])
 
-        self.final_norm = RMSNorm(config.n_embed, eps=1e-6)
+        # self.final_norm = RMSNorm(config.n_embed, eps=1e-6)
+        self.final_norm = RMSNorm(config.n_embed, eps=1e-4)
         self.lm_head = nn.Linear(config.n_embed, config.vocab_size, bias=False)
         self.config = config
 
