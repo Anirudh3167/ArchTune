@@ -156,36 +156,64 @@ class Gemma3Model(nn.Module):
         return mask_global, mask_local
 
     def forward(self, input_ids, attention_mask=None, labels=None): #, **kwargs):
-        b, seq_len = input_ids.shape
+        b, t = input_ids.shape  # 't' is the current sequence length
         x = self.tok_embedding(input_ids) * (self.config.n_embed ** 0.5)
-        # mask_global, mask_local = self._create_masks(seq_len, x.device)
-        # Get the 2D geometric masks (Seq, Seq)
-        mask_global, mask_local = self.mask_global.to(x.device), self.mask_local.to(x.device)   
 
-        # 2. Combine with dataset mask if it exists
-        # Dataset mask should be (Batch, Seq_Len) or (Batch, 1, 1, Seq_Len)
+        # Slice RoPE params and masks to current sequence length 't'
+        # Buffers are (Seq_Len, Head_Dim) or (Seq_Len, Seq_Len)
+        cos_global = self.cos_global[:t]
+        sin_global = self.sin_global[:t]
+        cos_local = self.cos_local[:t]
+        sin_local = self.sin_local[:t]
+        
+        mask_global = self.mask_global[:t, :t].to(x.device)
+        mask_local = self.mask_local[:t, :t].to(x.device)
+
         if attention_mask is not None:
-            # --- THE FIX: Convert 2D -> 4D ---
-            # Shape: (1, 1, Seq, Seq)
+            # Convert 2D -> 4D (1, 1, t, t) for broadcasting
             mask_global = mask_global.unsqueeze(0).unsqueeze(0)
             mask_local = mask_local.unsqueeze(0).unsqueeze(0)
-            # We invert the dataset mask if 1=visible (standard) to 1=hidden
-            # If your dataset already gives 1=hidden, skip the '~'
+            
+            # attention_mask is likely (B, t)
             dataset_mask_hidden = ~attention_mask.to(torch.bool)
             
-            # Broadcast and merge using logical OR
+            # Merge: (1, 1, t, t) | (B, 1, t, t) -> (B, 1, t, t)
             mask_global = mask_global | dataset_mask_hidden.unsqueeze(1)
             mask_local = mask_local | dataset_mask_hidden.unsqueeze(1)
+        # b, seq_len = input_ids.shape
+        # x = self.tok_embedding(input_ids) * (self.config.n_embed ** 0.5)
+        # # mask_global, mask_local = self._create_masks(seq_len, x.device)
+        # # Get the 2D geometric masks (Seq, Seq)
+        # mask_global, mask_local = self.mask_global.to(x.device), self.mask_local.to(x.device)   
+
+        # # 2. Combine with dataset mask if it exists
+        # # Dataset mask should be (Batch, Seq_Len) or (Batch, 1, 1, Seq_Len)
+        # if attention_mask is not None:
+        #     # --- THE FIX: Convert 2D -> 4D ---
+        #     # Shape: (1, 1, Seq, Seq)
+        #     mask_global = mask_global.unsqueeze(0).unsqueeze(0)
+        #     mask_local = mask_local.unsqueeze(0).unsqueeze(0)
+        #     # We invert the dataset mask if 1=visible (standard) to 1=hidden
+        #     # If your dataset already gives 1=hidden, skip the '~'
+        #     dataset_mask_hidden = ~attention_mask.to(torch.bool)
+            
+        #     # Broadcast and merge using logical OR
+        #     mask_global = mask_global | dataset_mask_hidden.unsqueeze(1)
+        #     mask_local = mask_local | dataset_mask_hidden.unsqueeze(1)
 
         for block in self.blocks:
             x = block(
                 x,
                 mask_global=mask_global,
                 mask_local=mask_local,
-                cos_global=self.cos_global,
-                sin_global=self.sin_global,
-                cos_local=self.cos_local,
-                sin_local=self.sin_local,
+                cos_global=cos_global,
+                sin_global=sin_global,
+                cos_local=cos_local,
+                sin_local=sin_local,
+                # cos_global=self.cos_global,
+                # sin_global=self.sin_global,
+                # cos_local=self.cos_local,
+                # sin_local=self.sin_local,
             )
 
         x = self.final_norm(x)
