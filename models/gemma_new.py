@@ -158,7 +158,7 @@ class Gemma3Model(nn.Module):
     def forward(self, input_ids, attention_mask=None, labels=None): #, **kwargs):
         b, t = input_ids.shape  # 't' is the current sequence length
         x = self.tok_embedding(input_ids) * (self.config.n_embed ** 0.5)
-
+        check_precision(x, "Post-Embedding")
         # Slice RoPE params and masks to current sequence length 't'
         # Buffers are (Seq_Len, Head_Dim) or (Seq_Len, Seq_Len)
         cos_global = self.cos_global[:t]
@@ -203,7 +203,7 @@ class Gemma3Model(nn.Module):
         #     mask_global = mask_global | dataset_mask_hidden.unsqueeze(1)
         #     mask_local = mask_local | dataset_mask_hidden.unsqueeze(1)
 
-        for block in self.blocks:
+        for idx,block in enumerate(self.blocks):
             x = block(
                 x,
                 mask_global=mask_global,
@@ -217,6 +217,7 @@ class Gemma3Model(nn.Module):
                 # cos_local=self.cos_local,
                 # sin_local=self.sin_local,
             )
+            check_precision(x, f"Post-Block {idx}")
 
         x = self.final_norm(x)
         logits = self.lm_head(x)
