@@ -22,10 +22,10 @@ class TransformerBlock(nn.Module):
             self.ff = FeedForward(config)
         else:
             self.ff = SparseMoE(config)
-        self.input_layernorm = RMSNorm(config.n_embed, eps=1e-6)
-        self.post_attention_layernorm = RMSNorm(config.n_embed, eps=1e-6)
-        self.pre_feedforward_layernorm = RMSNorm(config.n_embed, eps=1e-6)
-        self.post_feedforward_layernorm = RMSNorm(config.n_embed, eps=1e-6)
+        # self.input_layernorm = RMSNorm(config.n_embed, eps=1e-6)
+        # self.post_attention_layernorm = RMSNorm(config.n_embed, eps=1e-6)
+        # self.pre_feedforward_layernorm = RMSNorm(config.n_embed, eps=1e-6)
+        # self.post_feedforward_layernorm = RMSNorm(config.n_embed, eps=1e-6)
         # Reducing the eps for prevent nan in the loss
         self.input_layernorm = RMSNorm(config.n_embed, eps=1e-4)
         self.post_attention_layernorm = RMSNorm(config.n_embed, eps=1e-4)
