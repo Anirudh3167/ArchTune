@@ -207,8 +207,8 @@ class GroupedQueryAttention(nn.Module):
         v = v.repeat_interleave(self.group_size, dim=1)
 
         # Scale queries
-        queries = queries * self.scaling
-        
+        q = q * self.scaling
+
         # FlashAttention via SDPA
         context = F.scaled_dot_product_attention(
             q,
