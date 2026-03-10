@@ -98,7 +98,8 @@ class Gemma3Model(nn.Module):
         self.config = config
 
         # Weight Tying.
-        self.lm_head.weight = self.tok_embedding.weight
+        if config.embedding_type != 'hash':
+            self.lm_head.weight = self.tok_embedding.weight
 
         # Reusuable utilities
         cos_local, sin_local = compute_rope_params(
