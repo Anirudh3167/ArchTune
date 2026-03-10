@@ -97,6 +97,9 @@ class Gemma3Model(nn.Module):
         self.lm_head = nn.Linear(config.n_embed, config.vocab_size, bias=False)
         self.config = config
 
+        # Weight Tying.
+        self.lm_head.weight = self.tok_embedding.weight
+
         # Reusuable utilities
         cos_local, sin_local = compute_rope_params(
             head_dim=config.head_dim,
