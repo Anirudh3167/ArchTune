@@ -30,11 +30,11 @@ class MuonScheduler:
         for group in self.optimizer.param_groups:
             if group.get("use_muon", False):
                 # Update LR for Muon groups
-                group["lr"] = group["initial_lr"] * lr_scale
+                group["lr"] = group["initial_lr"] * frac * lr_scale
 
                 # Momentum warmup: 0.85 → 0.95 over first self.num_training_steps steps
                 # frac = min(self.last_step / 300.0, 1.0)
                 group["momentum"] = (1 - frac) * 0.85 + frac * 0.95
             else:
                 # For Adam groups, you can also scale LR if desired
-                group["lr"] = group["initial_lr"] * lr_scale
+                group["lr"] = group["initial_lr"] * frac * lr_scale

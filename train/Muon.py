@@ -74,10 +74,10 @@ class MuonWithAuxAdam(torch.optim.Optimizer):
                 for p in group["params"]:
                     if p.grad is None: continue
                     state = self.state[p]
-                    # if len(state) == 0:
-                    #     state["momentum_buffer"] = torch.zeros_like(p.grad)
-                    if "momentum_buffer" not in state:
+                    if len(state) == 0:
                         state["momentum_buffer"] = torch.zeros_like(p.grad)
+                    # if "momentum_buffer" not in state:
+                    #     state["momentum_buffer"] = torch.zeros_like(p.grad)
                     update, state["momentum_buffer"] = muon_update(p.grad, state["momentum_buffer"], beta=group["momentum"])
                     if group["weight_decay"] != 0:
                         p.mul_(1 - group["lr"] * group["weight_decay"])
@@ -85,8 +85,8 @@ class MuonWithAuxAdam(torch.optim.Optimizer):
             else:
                 for p in group["params"]:
                     if p.grad is None:
-                        # continue
-                        p.grad = torch.zeros_like(p)  # Force synchronization
+                        continue
+                        # p.grad = torch.zeros_like(p)  # Force synchronization
                     state = self.state[p]
                     if len(state) == 0:
                         state["exp_avg"] = torch.zeros_like(p)
