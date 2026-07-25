@@ -8,7 +8,7 @@ def train_one_epoch(model, dataloader, optimizer, scheduler, epoch, config, toke
     model.train()
     total_loss = 0
 
-    pbar = tqdm(enumerate(dataloader), desc=f"Epoch {epoch}")
+    pbar = tqdm(enumerate(dataloader), total=len(dataloader), desc=f"Epoch {epoch}")
     avg_loss = torch.zeros(50,device = device)
     avg_acc = torch.zeros(50, device = device)
     curr_loss = 0
@@ -69,7 +69,7 @@ def train_one_epoch(model, dataloader, optimizer, scheduler, epoch, config, toke
         acc = reporting_acc
 
         if idx % 10 == 0 and idx != 0:
-            train_step = idx + epoch * dataloader.total_batches
+            train_step = idx + epoch * len(dataloader)
             wandb.log({
                 "train/loss"    : reporting_loss,
                 "train/lr"      : optimizer.param_groups[0]["lr"],
