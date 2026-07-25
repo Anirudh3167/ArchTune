@@ -3,6 +3,7 @@ from dataclasses import dataclass, asdict
 @dataclass
 class Hyperparameters:
     vocab_size: int = 50304 # Updated once the tokenizer is built
+    total_params: int = 12000000 # Updated once the model is loaded
     seq_len: int = 512
     d_model: int = 256
     n_head: int = 4

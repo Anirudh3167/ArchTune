@@ -41,6 +41,9 @@ def run_pipeline(train_path: str, val_path: str, custom_config: Hyperparameters 
     # 3. Load model
     config.device = "cuda" if torch.cuda.is_available() else "cpu"
     model = GPT(config).to(config.device)
+    total_params = sum(p.numel() for p in model.parameters())
+    print(f"Total parameters: {total_params:,} ({total_params / 1e6:.2f}M)")
+    config.total_params = total_params
     
     if torch.cuda.device_count() > 1:
         model = torch.nn.DataParallel(model)
