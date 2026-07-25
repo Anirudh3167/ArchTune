@@ -10,36 +10,19 @@ import torch
 def run_pipeline(train_path: str, val_path: str, custom_config: Hyperparameters | None = None):
     # 1. Prepare tokenizer and config
     tokenizer = get_tokenizer_with_increased_vocab()
-    if custom_config:
-        config = custom_config
-    else:
-        config = Hyperparameters()
+    config = Hyperparameters() if custom_config is None else custom_config
     
     # 2. Prepare datasets
-    train_dataset = MemmapTokenDataset(
-        train_path,
-        seq_len=config.seq_len,
-        bos_token_id=tokenizer.bos_token_id,
-    )
-    
-    val_dataset = MemmapTokenDataset(
-        val_path,
-        seq_len=config.seq_len,
-        bos_token_id=tokenizer.bos_token_id,
-    )
-
-    collator = DataCollator(
-        seq_len=config.seq_len,
-        bos_token_id=tokenizer.bos_token_id,
-    )
+    train_dataset = MemmapTokenDataset(train_path,seq_len=config.seq_len)
+    val_dataset = MemmapTokenDataset(val_path,seq_len=config.seq_len)
+    collator = DataCollator(seq_len=config.seq_len)
     
     train_loader = DataLoader(
         train_dataset,
         batch_size=42,
         shuffle=True,
-        # num_workers=2,
+        num_workers=2,
         pin_memory=True,
-        # persistent_workers=True,
         collate_fn=collator,
     )
     
@@ -47,9 +30,8 @@ def run_pipeline(train_path: str, val_path: str, custom_config: Hyperparameters 
         val_dataset,
         batch_size=42,
         shuffle=False,
-        # num_workers=2,
+        num_workers=2,
         pin_memory=True,
-        # persistent_workers=True,
         collate_fn=collator,
     )
 
@@ -61,4 +43,4 @@ def run_pipeline(train_path: str, val_path: str, custom_config: Hyperparameters 
     optimizer, lr_scheduler = create_muon_optimizer_and_scheduler(model, config, len(train_loader) // config.batch_size)
 
     # 5. Run training
-    run_training(config, model, optimizer, lr_scheduler, 0, None, train_loader, val_loader)
+    run_training(config, model, optimizer, lr_scheduler, train_loader, val_loader)

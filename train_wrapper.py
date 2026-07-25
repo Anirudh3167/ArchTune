@@ -3,7 +3,7 @@ from .HyperParamsConfig import Hyperparameters
 from .train_loop import train_one_epoch
 import wandb, torch
 
-def run_training(config: Hyperparameters, model, optimizer, scheduler, avg_val_loss, train_loader: DataLoader, val_loader: DataLoader):
+def run_training(config: Hyperparameters, model, optimizer, scheduler, train_loader: DataLoader, val_loader: DataLoader):
     """ Requires Kaggle secrets to define wandb api key  as 'wandb_api_key' """   
     # Initialize WandB
     from kaggle_secrets import UserSecretsClient
@@ -21,7 +21,6 @@ def run_training(config: Hyperparameters, model, optimizer, scheduler, avg_val_l
         model.eval()
         wandb.log({
             "epoch/train_loss": avg_train_loss,
-            "epoch/val_loss": avg_val_loss,
             "epoch": epoch
         })
         

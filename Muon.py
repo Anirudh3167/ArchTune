@@ -134,7 +134,8 @@ class MuonScheduler:
             if group.get("use_muon", False):
                 group["momentum"] = (1 - frac) * 0.85 + frac * 0.95
 
-def build_muon_optimizer(model, cfg):
+def build_muon_optimizer(model, hidden_lr: int = 0.002, hidden_momentum: int = 0.95, 
+                         lr: int = 0.008, weight_decay: int = 0.01):
     # Bug 3 fix: track embed param ids to avoid overlap
     embed_param_ids = {id(p) for n, p in model.named_parameters() if "embed" in n}
 
@@ -160,19 +161,19 @@ def build_muon_optimizer(model, cfg):
         {
             "params": hidden_matrix_params,
             "use_muon": True,
-            "lr": getattr(cfg, "hidden_lr", 0.002),
-            "initial_lr": getattr(cfg, "hidden_lr", 0.002),
-            "momentum": getattr(cfg, "hidden_momentum", 0.95),
-            "weight_decay": getattr(cfg, "weight_decay", 0.1),
+            "lr": hidden_lr,
+            "initial_lr": hidden_lr,
+            "momentum": hidden_momentum,
+            "weight_decay": weight_decay,
         },
         {
             "params": embed_params + scalar_params,
             "use_muon": False,
-            "lr": getattr(cfg, "lr", 8e-3),
-            "initial_lr": getattr(cfg, "lr", 8e-3),
-            "betas": getattr(cfg, "adam_betas", (0.9, 0.95)),
-            "eps": getattr(cfg, "adam_eps", 1e-8),
-            "weight_decay": getattr(cfg, "weight_decay", 0.1),
+            "lr": lr,
+            "initial_lr": lr,
+            "betas": (0.9, 0.95),
+            "eps": 1e-8,
+            "weight_decay": weight_decay,
         }
     ])
     return optimizer
@@ -181,13 +182,13 @@ def create_scheduler(num_training_steps: int, optimizer: MuonWithAuxAdam):
     lr_scheduler = MuonScheduler(
         optimizer=optimizer,
         num_training_steps=num_training_steps,
-        cooldown_frac=0.15,      # bug 4 fix: 0.1 not 0.45
-        warmup_frac=0.05,       # scheduler bug 1 fix: explicit warmup
+        cooldown_frac=0.15,     # 15% training spent on cooldown
+        warmup_frac=0.02,       # Explicit short warmup
     )
     return lr_scheduler
 
 def create_muon_optimizer_and_scheduler(model, cfg, num_training_steps: int):
     """"A wrapper that creates Muon optimizer and scheduler"""
-    optimizer = build_muon_optimizer(model, cfg)
+    optimizer = build_muon_optimizer(model, cfg.hidden_lr, cfg.hidden_momentum, cfg.lr, cfg.weight_decay)
     lr_scheduler = create_scheduler(num_training_steps, optimizer)
     return optimizer, lr_scheduler
