@@ -38,6 +38,9 @@ def run_pipeline(train_path: str, val_path: str, custom_config: Hyperparameters 
     # 3. Load model
     config.device = "cuda" if torch.cuda.is_available() else "cpu"
     model = GPT(config).to(config.device)
+    
+    if torch.cuda.device_count() > 1:
+        model = torch.nn.DataParallel(model)
 
     # 4. Create optimizer and scheduler
     optimizer, lr_scheduler = create_muon_optimizer_and_scheduler(model, config, len(train_loader) // config.batch_size)
