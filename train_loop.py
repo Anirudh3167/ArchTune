@@ -100,7 +100,7 @@ def train_one_epoch(model, dataloader, optimizer, scheduler, epoch, config, toke
                             "generation 2": model.module.generate("The war in Europe", tokenizer),
                             "generation 3": model.module.generate("The construction of", tokenizer),
                             "Argmax sample 1": model.module.generate("The construction of", tokenizer, with_argmax = True),
-                            "Argmax sample 2": model.module.generate("The construction of", tokenizer, with_argmax = True),
+                            "Argmax sample 2": model.module.generate("Harry said that the glass", tokenizer, with_argmax = True),
                         }
                         )
                     else:
