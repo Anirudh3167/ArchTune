@@ -33,13 +33,9 @@ def train_one_epoch(model, dataloader, optimizer, scheduler, epoch, config, toke
         
         
         # --- Accuracy (FP32) ---
-        labels      = batch["labels"].to(torch.long)
+        labels      = batch["labels"].to(logits.device).long()  # This because the dataloader is returning CPU objects. We need GPU objects for accuracy.
         # mask        = labels != torch.zeros(1)  # Masking doesn't make any sense in pre-training with chunking
         predictions = torch.argmax(logits, dim=-1)
-        print("Output Shapes: ")
-        print("Logits: ", logits.shape)
-        print("Labels: ", batch["labels"].shape)
-        print("Predictions: ", predictions.shape)
         correct     = (predictions == labels) # & mask
         # acc = (correct.sum().float() / mask.sum().float()) * 100
         acc = (correct.sum().float() / labels.numel()) * 100
