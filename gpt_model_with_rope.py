@@ -126,7 +126,8 @@ class GPT(nn.Module):
     if labels != None:
       B, S, V = logits.shape
       loss = F.cross_entropy(logits.view(B*S, V), labels.view(B*S).long(), ignore_index = 0)
-    return {"logits":logits, "loss": loss}
+    # return {"logits":logits, "loss": loss}
+    return loss, logits
 
   @property
   def device(self):   return next(self.parameters()).device
@@ -137,7 +138,8 @@ class GPT(nn.Module):
         with_argmax: whether to use argmax or sampling """
     x = torch.tensor( tokenizer.encode(x)[:-1], device = self.device ) # Discard the [SEP] token here.
     for _ in range(num_tokens):
-        out = self(x[-self.seq_len:].unsqueeze(0))["logits"]     # Input : (1,seq_len)  Output : (1,seq_len,vocab_size)
+        # out = self(x[-self.seq_len:].unsqueeze(0))["logits"]     # Input : (1,seq_len)  Output : (1,seq_len,vocab_size)
+        out = self(x[-self.seq_len:].unsqueeze(0))[1]
         if with_argmax:
             tkn = out[0,-1].argmax()
         else: 

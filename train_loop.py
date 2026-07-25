@@ -23,11 +23,13 @@ def train_one_epoch(model, dataloader, optimizer, scheduler, epoch, config, toke
         with torch.autocast(device_type="cuda", dtype=torch.float16):
             outputs = model(
                 input_ids      = batch.get("input_ids"),
-                attention_mask = batch.get("attention_mask"),
+                # attention_mask = batch.get("attention_mask"),
                 labels         = batch.get("labels"),    # ensure pad positions are -100, not pad_token_id
             )
-            loss   = outputs["loss"].mean()  # .mean is used because each GPU provides it's own loss
-            logits = outputs["logits"]
+            loss, logits = outputs
+            loss = loss.mean()
+            # loss   = outputs["loss"].mean()  # .mean is used because each GPU provides it's own loss
+            # logits = outputs["logits"]
         
         
         # --- Accuracy (FP32) ---

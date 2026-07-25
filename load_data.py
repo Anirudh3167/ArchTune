@@ -29,6 +29,6 @@ class DataCollator:
         # It is for future formats of data.
         return {
             "input_ids": torch.stack(inputs),
-            "attention_mask": self.causal_mask,
+            # "attention_mask": self.causal_mask,
             "labels": torch.stack(labels),
         }
