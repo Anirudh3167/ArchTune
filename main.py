@@ -11,6 +11,7 @@ def run_pipeline(train_path: str, val_path: str, custom_config: Hyperparameters 
     # 1. Prepare tokenizer and config
     tokenizer = get_tokenizer_with_increased_vocab()
     config = Hyperparameters() if custom_config is None else custom_config
+    config.vocab_size = tokenizer.vocab_size
     
     # 2. Prepare datasets
     train_dataset = MemmapTokenDataset(train_path,seq_len=config.seq_len)
@@ -46,4 +47,4 @@ def run_pipeline(train_path: str, val_path: str, custom_config: Hyperparameters 
     optimizer, lr_scheduler = create_muon_optimizer_and_scheduler(model, config, len(train_loader) // config.batch_size)
 
     # 5. Run training
-    run_training(config, model, optimizer, lr_scheduler, train_loader, val_loader)
+    run_training(config, model, optimizer, lr_scheduler, tokenizer, train_loader, val_loader)

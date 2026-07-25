@@ -1,7 +1,7 @@
 import torch, wandb
 from tqdm.auto import tqdm
 
-def train_one_epoch(model, dataloader, optimizer, scheduler, epoch, config, eval_loader = None):
+def train_one_epoch(model, dataloader, optimizer, scheduler, epoch, config, tokenizer, eval_loader = None):
     """" This code is designed to run in parallel with the gradscalar at fp16. This will run with DataParallel.
      The commented lines indicate the code without the gradscalar """
     device = config.device
@@ -85,15 +85,29 @@ def train_one_epoch(model, dataloader, optimizer, scheduler, epoch, config, eval
                             labels = batch.get("labels")
                         )
                         eval_loss += out["loss"].mean().item() # .mean() is due to each GPU generates it's own loss.
-    
-                    wandb.log({
-                        "eval_loss": eval_loss / len(eval_loader),
-                        "step": idx + epoch * len(dataloader),
-                        "generation 1": model.module.generate("The government of France is"),
-                        "generation 2": model.module.generate("The war in Europe"),
-                        "generation 3": model.module.generate("The construction of"),
-                    }
-                    )
+
+                    if torch.cuda.device_count() > 1:
+                        wandb.log({
+                            "eval_loss": eval_loss / len(eval_loader),
+                            "step": idx + epoch * len(dataloader),
+                            "generation 1": model.module.generate("The government of France is", tokenizer),
+                            "generation 2": model.module.generate("The war in Europe", tokenizer),
+                            "generation 3": model.module.generate("The construction of", tokenizer),
+                            "Argmax sample 1": model.module.generate("The construction of", tokenizer, with_argmax = True),
+                            "Argmax sample 2": model.module.generate("The construction of", tokenizer, with_argmax = True),
+                        }
+                        )
+                    else:
+                        wandb.log({
+                            "eval_loss": eval_loss / len(eval_loader),
+                            "step": idx + epoch * len(dataloader),
+                            "generation 1": model.generate("The government of France is", tokenizer),
+                            "generation 2": model.generate("The war in Europe", tokenizer),
+                            "generation 3": model.generate("The construction of", tokenizer),
+                            "Argmax sample 1": model.generate("The construction of", tokenizer, with_argmax = True),
+                            "Argmax sample 2": model.generate("The construction of", tokenizer, with_argmax = True),
+                        }
+                        )
 
                 if idx % 2000 == 0:
                     # Save checkpoint

@@ -93,13 +93,13 @@ class GPT(nn.Module):
   def __init__(self, config):
     super().__init__()
     self.token_embedding_table = nn.Embedding(config.vocab_size, config.d_model)
-    self.blocks = nn.ModuleList([Block(config) for _ in range(config.num_layers)])
+    self.blocks = nn.ModuleList([Block(config) for _ in range(config.n_layers)])
 
     # in GPT.__init__, after self.blocks is built:
     self.apply(self._init_weights)
     for pn, p in self.named_parameters():
         if pn.endswith('c_proj.weight') or pn.endswith('w3.weight'):
-            nn.init.normal_(p, mean=0.0, std=0.02 / math.sqrt(2 * config.num_layers))
+            nn.init.normal_(p, mean=0.0, std=0.02 / math.sqrt(2 * config.n_layers))
     self.ln = RMSNorm(config.d_model)
     self.out_proj = nn.Linear(config.d_model,config.vocab_size, bias = config.bias)
     # self.drop = nn.Dropout(config.dropout)  ## Not sure about the idea of using dropout.

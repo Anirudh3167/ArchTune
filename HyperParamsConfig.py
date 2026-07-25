@@ -2,14 +2,14 @@ from dataclasses import dataclass, asdict
 
 @dataclass(slots=True)
 class Hyperparameters:
-    vocab_size: int = 50304
+    vocab_size: int = 50304 # Updated once the tokenizer is built
     seq_len: int = 512
-    n_embed: int = 256
+    d_model: int = 256
     n_head: int = 4
-    n_layer: int = 4
+    n_layers: int = 4
     hidden_dim: int = 1024
-    head_dim: int = 256
     rope_local_base: float = 10_000.0
+    bias: bool = False
     rope_base: float = 1_000_000.0
     
     dropout: float = 0 
@@ -19,7 +19,6 @@ class Hyperparameters:
     grad_accum: int = 1
 
     device: str = 'cpu'
-    bias: bool = False
     epochs: int = 1
     weight_decay: float = 0
     warmup_ratio: float = 0.02
