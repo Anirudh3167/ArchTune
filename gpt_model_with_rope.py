@@ -82,7 +82,7 @@ class RMSNorm(nn.Module):
 class Block(nn.Module):
   def __init__(self, config):
     super().__init__()
-    self.csa = CausalSelfAttention(config.d_model, config.n_head, config.seq_len, config.bias, config.dropout, config.rope_theta)
+    self.csa = CausalSelfAttention(config.d_model, config.n_head, config.seq_len, config.bias, config.dropout)
     self.ff = SwiGLU(config.d_model)
     self.ln1, self.ln2 = [RMSNorm(config.d_model) for _ in range(2)]
   def forward(self, x, attention_mask):
