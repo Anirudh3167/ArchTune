@@ -84,11 +84,13 @@ def train_one_epoch(model, dataloader, optimizer, scheduler, epoch, config, toke
                     eval_loss = 0
                     for batch in eval_loader:
                         out = model(
-                            input_ids  =  batch["input_ids"],
-                            attention_mask = batch.get("attention_mask"),
+                            input_ids  =  batch.get("input_ids"),
+                            # attention_mask = batch.get("attention_mask"),
                             labels = batch.get("labels")
                         )
-                        eval_loss += out["loss"].mean().item() # .mean() is due to each GPU generates it's own loss.
+                        curr_eval_loss,_ = out
+                        eval_loss += curr_eval_loss.mean().item()
+                        # eval_loss += out["loss"].mean().item() # .mean() is due to each GPU generates it's own loss.
 
                     if torch.cuda.device_count() > 1:
                         wandb.log({
