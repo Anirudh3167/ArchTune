@@ -141,7 +141,7 @@ class GPT(nn.Module):
         # out = self(x[-self.seq_len:].unsqueeze(0))["logits"]     # Input : (1,seq_len)  Output : (1,seq_len,vocab_size)
         out = self(x[-self.seq_len:].unsqueeze(0))[1]
         if with_argmax:
-            tkn = out[0,-1].argmax()
+            tkn = out[0,-1].argmax().unsqueeze(0) # Unsqueeze is used to keep the batch dimension as 1.
         else: 
             tkn = torch.multinomial( F.softmax(out[:,-1], dim = -1), num_samples = 1 ).to(device = x.device)[0]
         x = torch.cat( (x, tkn), dim=-1 )
