@@ -31,10 +31,11 @@ def train_one_epoch(model, dataloader, optimizer, scheduler, epoch, config, toke
         
         # --- Accuracy (FP32) ---
         labels      = batch["labels"].to(torch.long)
-        mask        = labels != torch.zeros(1)  # Masking doesn't make any sense in pre-training with chunking
+        # mask        = labels != torch.zeros(1)  # Masking doesn't make any sense in pre-training with chunking
         predictions = torch.argmax(logits, dim=-1)
-        correct     = (predictions == labels) & mask
-        acc = (correct.sum().float() / mask.sum().float()) * 100
+        correct     = (predictions == labels) # & mask
+        # acc = (correct.sum().float() / mask.sum().float()) * 100
+        acc = (correct.sum().float() / labels.numel()) * 100
 
         # --- Backward ---
         # loss.backward()
