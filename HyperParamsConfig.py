@@ -1,6 +1,6 @@
 from dataclasses import dataclass, asdict
 
-@dataclass(slots=True)
+@dataclass
 class Hyperparameters:
     vocab_size: int = 50304 # Updated once the tokenizer is built
     seq_len: int = 512
