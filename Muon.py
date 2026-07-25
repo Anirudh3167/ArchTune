@@ -189,6 +189,6 @@ def create_scheduler(num_training_steps: int, optimizer: MuonWithAuxAdam):
 
 def create_muon_optimizer_and_scheduler(model, cfg, num_training_steps: int):
     """"A wrapper that creates Muon optimizer and scheduler"""
-    optimizer = build_muon_optimizer(model, cfg.hidden_lr, cfg.hidden_momentum, cfg.lr, cfg.weight_decay)
+    optimizer = build_muon_optimizer(model, cfg.hidden_lr, cfg.momentum, cfg.lr, cfg.weight_decay)
     lr_scheduler = create_scheduler(num_training_steps, optimizer)
     return optimizer, lr_scheduler

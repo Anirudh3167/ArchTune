@@ -15,6 +15,7 @@ class Hyperparameters:
     dropout: float = 0 
     lr: float = 1e-3
     hidden_lr: float = 1e-3  # Applicable for Muon
+    momentum: float = 0.95
     batch_size: int = 28     # micro-batch size per gradient step
     grad_accum: int = 1
 
