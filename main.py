@@ -21,7 +21,7 @@ def run_pipeline(train_path: str, val_path: str, custom_config: Hyperparameters 
     
     train_loader = DataLoader(
         train_dataset,
-        batch_size=42,
+        batch_size=config.batch_size,
         shuffle=True,
         num_workers=2,
         pin_memory=True,
@@ -30,7 +30,7 @@ def run_pipeline(train_path: str, val_path: str, custom_config: Hyperparameters 
     
     val_loader = DataLoader(
         val_dataset,
-        batch_size=42,
+        batch_size=config.batch_size,
         shuffle=False,
         num_workers=2,
         pin_memory=True,
@@ -48,7 +48,7 @@ def run_pipeline(train_path: str, val_path: str, custom_config: Hyperparameters 
     print("Model Loaded")
 
     # 4. Create optimizer and scheduler
-    optimizer, lr_scheduler = create_muon_optimizer_and_scheduler(model, config, len(train_loader) // config.batch_size)
+    optimizer, lr_scheduler = create_muon_optimizer_and_scheduler(model, config, len(train_loader))
     print("Optimizer and Scheduler Created. Starting Training...")
     # 5. Run training
     run_training(config, model, optimizer, lr_scheduler, tokenizer, train_loader, val_loader)

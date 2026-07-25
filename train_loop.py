@@ -29,10 +29,15 @@ def train_one_epoch(model, dataloader, optimizer, scheduler, epoch, config, toke
             loss   = outputs["loss"].mean()  # .mean is used because each GPU provides it's own loss
             logits = outputs["logits"]
         
+        
         # --- Accuracy (FP32) ---
         labels      = batch["labels"].to(torch.long)
         # mask        = labels != torch.zeros(1)  # Masking doesn't make any sense in pre-training with chunking
         predictions = torch.argmax(logits, dim=-1)
+        print("Output Shapes: ")
+        print("Logits: ", logits.shape)
+        print("Labels: ", batch["labels"].shape)
+        print("Predictions: ", predictions.shape)
         correct     = (predictions == labels) # & mask
         # acc = (correct.sum().float() / mask.sum().float()) * 100
         acc = (correct.sum().float() / labels.numel()) * 100
